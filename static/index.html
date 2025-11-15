@@ -1,85 +1,343 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <title>Teachable Machine + GPT Demo</title>
+    <title>OTTCOUTURE OpenCore Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 2rem;
-        background: #f5f7fb;
+      :root {
+        --bg: #05060f;
+        --panel: rgba(8, 10, 25, 0.85);
+        --card: rgba(16, 19, 39, 0.9);
+        --accent: #40ffa3;
+        --accent-2: #6f7dff;
+        --text: #f5f7ff;
+        --muted: rgba(255, 255, 255, 0.7);
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       }
-      h1 {
-        color: #1f3a7d;
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at 20% 20%, #1e1142, transparent 40%),
+          radial-gradient(circle at 80% 0%, #0a5e46, transparent 45%),
+          var(--bg);
+        color: var(--text);
+        padding: 2.5rem clamp(1.25rem, 3vw, 4rem) 4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+      }
+      header {
+        background: linear-gradient(135deg, rgba(24, 25, 61, 0.85), rgba(10, 13, 28, 0.95));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 32px;
+        padding: clamp(1.5rem, 3vw, 3rem);
+        backdrop-filter: blur(14px);
+        box-shadow: 0 30px 80px rgba(3, 5, 15, 0.9);
+      }
+      header h1 {
+        font-size: clamp(2rem, 4vw, 3.5rem);
+        margin: 0 0 0.75rem;
+        color: var(--text);
+      }
+      header p {
+        margin: 0 0 0.75rem;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      header .actions {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      header .actions a {
+        text-decoration: none;
+        padding: 0.85rem 1.25rem;
+        border-radius: 999px;
+        font-weight: 600;
+        transition: transform 0.2s ease;
+      }
+      header .actions a.primary {
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        color: #020202;
+      }
+      header .actions a.secondary {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: var(--text);
+      }
+      header .actions a:hover {
+        transform: translateY(-2px);
+      }
+      main {
+        display: grid;
+        gap: 1.75rem;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+      .card {
+        background: var(--card);
+        padding: 1.75rem;
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 25px 50px rgba(3, 5, 15, 0.55);
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.35rem;
       }
       form {
         display: flex;
         flex-direction: column;
         gap: 1rem;
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        max-width: 480px;
+      }
+      label {
+        font-weight: 600;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        color: var(--muted);
+      }
+      textarea,
+      input[type="file"] {
+        background: rgba(8, 11, 25, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 1rem;
+        color: var(--text);
+        font-family: inherit;
       }
       textarea {
-        min-height: 120px;
-      }
-      #result {
-        white-space: pre-wrap;
-        margin-top: 2rem;
-        padding: 1rem;
-        border-radius: 8px;
-        background: #fff;
-        box-shadow: inset 0 0 0 1px #ececec;
+        min-height: 160px;
+        resize: vertical;
       }
       button {
-        background: #2563eb;
         border: none;
-        color: #fff;
-        padding: 0.75rem 1rem;
+        border-radius: 999px;
+        padding: 0.95rem 1.4rem;
         font-size: 1rem;
-        border-radius: 8px;
+        font-weight: 600;
         cursor: pointer;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #05060f;
       }
       button:disabled {
-        background: #93c5fd;
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      #result {
+        margin: 0;
+        white-space: pre-wrap;
+        padding: 1.25rem;
+        border-radius: 20px;
+        background: radial-gradient(circle at 10% 10%, rgba(64, 255, 163, 0.15), transparent 45%),
+          rgba(8, 11, 25, 0.85);
+        border: 1px solid rgba(64, 255, 163, 0.3);
+        min-height: 160px;
+        font-family: "Space Mono", "Space Grotesk", monospace;
+        color: #9ef9d2;
+        text-shadow: 0 0 8px rgba(64, 255, 163, 0.25);
+      }
+      .disclaimer {
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+      footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 1.5rem;
+        color: var(--muted);
+      }
+      footer strong {
+        color: var(--text);
+      }
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
       }
     </style>
   </head>
   <body>
-    <h1>Teachable Machine + GPT Demo</h1>
-    <p>
-      This minimal UI posts to <code>/analyze</code>. Use it when you do not want to
-      open Swagger.
-    </p>
-    <form id="analyze-form">
-      <label>
-        Prompt
-        <textarea id="prompt" placeholder="Describe what you would like the assistant to do" required></textarea>
-      </label>
-      <label>
-        Image
-        <input id="image" type="file" accept="image/*" required />
-      </label>
-      <button type="submit">Analyze</button>
-    </form>
-    <pre id="result"></pre>
+    <header>
+      <p style="text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.85rem; color: var(--accent)">
+        OTTCOUTURE.EU · OPENCORE
+      </p>
+      <h1>OPENCORE Analyzer</h1>
+      <p>
+        Der Analyzer kombiniert deine Uploads mit unserem offenen Community-Modell „OPENCORE“ und liefert strukturierte JSON
+        Ergebnisse für Cannabis-Analysen.
+      </p>
+      <p>
+        Alle Rechte liegen bei <strong>ottcouture.eu</strong>. Kontakt & Support: <strong>otcdmin@outlook.com</strong>,
+        Instagram <strong>@ottcouture.eu</strong> oder Discord
+        <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener" style="color: var(--accent)">
+          discord.gg/GMMSqePfPh
+        </a>
+        .
+      </p>
+      <div class="actions">
+        <a class="primary" href="/config">Konfiguration &amp; TM Depot</a>
+        <a class="secondary" href="/completions">OTTO Grow-Chat</a>
+        <a class="secondary" href="https://ottcouture.eu" target="_blank" rel="noopener">ottcouture.eu</a>
+        <a class="secondary" href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener"
+          >Discord joinen</a
+        >
+      </div>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Signal Input</h2>
+        <p class="disclaimer">
+          Beschreibe kurz, welche Auswertung du brauchst. Wir leiten Bild und Prompt an das ausgewählte OPENCORE- oder
+          Community-Modell weiter und liefern eine sachliche JSON-Antwort.
+        </p>
+        <form id="analyze-form">
+          <label>
+            Teachable-Machine-Modell
+            <select id="model-select">
+              <option value="">Modelle werden geladen …</option>
+            </select>
+            <small id="model-status">Wir übernehmen automatisch das Standardmodell aus dem Konfigurator.</small>
+          </label>
+          <label>
+            Prompt
+            <textarea id="prompt" placeholder="Beschreibe, welche Cannabis-Analyse das Modell durchführen soll" required></textarea>
+          </label>
+          <label>
+            Bildmaterial
+            <input id="image" type="file" accept="image/*" required />
+          </label>
+          <button type="submit">Analyse starten</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Analyse-Output</h2>
+        <p class="disclaimer">Der Analyzer liefert unveränderte JSON-Daten direkt aus dem Backend.</p>
+        <pre id="result">{
+  "status": "bereit",
+  "hinweis": "Bitte Modell, Prompt und Bild wählen."
+}</pre>
+      </section>
+
+      <section class="card">
+        <h2>README + Support</h2>
+        <p class="disclaimer">
+          OPENCORE ist unser Open-Source-Community-Modell für Cannabis-Vision. Die Kombination aus Teachable Machine und
+          LLM-Analyse bleibt vollständig bei OTTCOUTURE gebrandet. Feedback oder neue Modelle gern an
+          <strong>otcdmin@outlook.com</strong>, Instagram <strong>@ottcouture.eu</strong> oder Discord
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">GMMSqePfPh</a>.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        © <strong>OTTCOUTURE</strong> — Enterprise Tooling & OpenCore Community Model „OPENCORE“. Rechte: ottcouture.eu ·
+        Support via <a href="mailto:otcdmin@outlook.com">otcdmin@outlook.com</a>, Instagram <strong>@ottcouture.eu</strong>
+        oder Discord <strong>discord.gg/GMMSqePfPh</strong>.
+      </p>
+    </footer>
+
     <script>
       const form = document.getElementById("analyze-form");
       const result = document.getElementById("result");
+      const modelSelect = document.getElementById("model-select");
+      const modelStatus = document.getElementById("model-status");
+
+      async function loadModels() {
+        if (!modelSelect) return;
+        modelSelect.disabled = true;
+        modelSelect.innerHTML = "<option>Modelle werden geladen …</option>";
+        let enableSelect = true;
+        try {
+          const response = await fetch("/tm-models");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const payload = await response.json();
+          const models = payload.models || [];
+          const hasBuiltin = payload.has_builtin;
+          const defaultId = payload.default_model_id;
+          modelSelect.innerHTML = "";
+          let selection = "";
+          if (models.length === 0 && !hasBuiltin) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "Kein Modell verfügbar – bitte im Config-Bereich hochladen.";
+            option.disabled = true;
+            modelSelect.appendChild(option);
+            if (modelStatus)
+              modelStatus.textContent =
+                "Bitte mindestens ein Teachable-Machine-Modell im /config Bereich installieren.";
+            enableSelect = false;
+          } else {
+            if (hasBuiltin) {
+              const option = document.createElement("option");
+              option.value = "builtin";
+              option.textContent = "OPENCORE Referenz (TEACHABLE_MODEL_PATH)";
+              modelSelect.appendChild(option);
+              selection = "builtin";
+            }
+            models.forEach((model) => {
+              const option = document.createElement("option");
+              option.value = model.id;
+              option.textContent = `${model.name} (${model.type === "health" ? "Health" : "Trichome"})`;
+              modelSelect.appendChild(option);
+            });
+            if (defaultId && models.some((model) => model.id === defaultId)) {
+              selection = defaultId;
+            } else if (models.length) {
+              selection = selection || models[0].id;
+            }
+            if (selection) {
+              modelSelect.value = selection;
+            }
+            if (modelStatus) {
+              modelStatus.textContent =
+                "Die Auswahl bestimmt, welches Teachable-Machine-Paket für die Analyse geladen wird.";
+            }
+          }
+        } catch (error) {
+          enableSelect = false;
+          if (modelStatus) modelStatus.textContent = "Modelle konnten nicht geladen werden.";
+          console.error("Model load", error);
+        } finally {
+          modelSelect.disabled = !enableSelect;
+        }
+      }
+
+      loadModels();
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
-        result.textContent = "Running...";
+        result.textContent = JSON.stringify(
+          {
+            status: "running",
+            info: "Vision + LLM Pipeline aktiv",
+            timestamp: new Date().toISOString(),
+          },
+          null,
+          2
+        );
         const prompt = document.getElementById("prompt").value;
         const image = document.getElementById("image").files[0];
         if (!prompt || !image) {
-          result.textContent = "Prompt and image are required.";
+          result.textContent = "Prompt und Bild werden benötigt.";
           return;
         }
         const formData = new FormData();
         formData.append("prompt", prompt);
         formData.append("image", image);
+        if (modelSelect && modelSelect.value) {
+          formData.append("model_id", modelSelect.value);
+        }
         try {
           const response = await fetch("/analyze", {
             method: "POST",
@@ -88,7 +346,14 @@
           const payload = await response.json();
           result.textContent = JSON.stringify(payload, null, 2);
         } catch (error) {
-          result.textContent = `Failed to contact API: ${error}`;
+          result.textContent = JSON.stringify(
+            {
+              status: "error",
+              reason: error?.message || String(error),
+            },
+            null,
+            2
+          );
         }
       });
     </script>

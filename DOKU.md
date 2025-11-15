@@ -22,19 +22,20 @@ Modelle vorbereitet werden und wie die Umgebung zu konfigurieren ist.
    ```
 
 ## 3. Modelle & Labels
-- Ablageort: `./models/teachable_model` (per `TEACHABLE_MODEL_PATH` überschreibbar).
-- Muss die vom Export generierte `labels.txt` enthalten. Den Inhalt dieser Datei in die
-  Konstante `CLASS_NAMES` in `app.py` übernehmen, damit die Vorhersagen korrekt benannt
-  werden.
-- Die Modell-Ordnerstruktur entspricht der Standardstruktur eines TensorFlow
-  SavedModels (`assets/`, `variables/`, `saved_model.pb`).
+- Primärer Ablageort ist `TM-models/`. Das Upload-Feature entpackt ZIPs (mit `metadata.json`, `model.json`, `weights.bin`) in einen Unterordner und schreibt zusätzlich einen Eintrag in `TM-models/registry.json`.
+- Falls kein Eintrag aktiv ist, nutzt der Analyzer `TEACHABLE_MODEL_PATH` (z. B. `./models/teachable_model`).
+- Labels werden automatisch aus `metadata.json` gelesen. Fehlen Daten, erzeugt der Service neutrale Bezeichner (`class_1`, `class_2`, …).
 
 ## 4. Konfiguration
 | Variable | Beschreibung |
 | --- | --- |
-| `OPENAI_API_KEY` | Pflichtvariable. API Key wird vom offiziellen OpenAI SDK gelesen. |
+| `OPENAI_API_KEY` | Pflicht für Cloud-LLMs und den OTTO-Chat. |
 | `OPENAI_GPT_MODEL` | Optional. Default ist `gpt-4.1-mini`. |
-| `TEACHABLE_MODEL_PATH` | Optional. Pfad zum Modellverzeichnis. |
+| `TEACHABLE_MODEL_PATH` | Optionaler Fallback-Pfad für ein lokales TM-Modell. |
+
+Weitere Persistenzdateien:
+- `app-settings.json`: speichert das Standardmodell (wird vom `/tm-models/default` Endpunkt gepflegt).
+- `network-config.json`: merkt sich den mDNS-Status (Hostname/Port für `ottcolab.local`).
 
 ## 5. Starten des Servers
 ```bash
@@ -46,9 +47,9 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 - Simple HTML UI: http://localhost:8000/
 
 ## 6. HTML-Demo
-`static/index.html` enthält ein schlichtes Formular, das `prompt` und `image` sammelt
-und als `multipart/form-data` an `/analyze` sendet. Ergebnisse werden als JSON
-angezeigt. Die Datei kann individuell angepasst werden.
+- `static/index.html`: Analyzer UI mit Modell-Dropdown (ruft `/analyze`).
+- `static/config.html`: Konsole für Provider, System-Prompts, TM-Depot und mDNS.
+- `static/completions.html`: OTTO Grow Chat (ruft `/api/completions`).
 
 ## 7. Fehlerbehandlung
 - **400**: fehlender Prompt oder Bild.
@@ -61,9 +62,9 @@ angezeigt. Die Datei kann individuell angepasst werden.
 - Optional: Gunicorn/Uvicorn-Worker über `gunicorn -k uvicorn.workers.UvicornWorker`.
 
 ## 9. Weiterentwicklung
-- `CLASS_NAMES` aus einer `labels.txt` lesen statt hart zu kodieren.
-- Modelldateien versionieren (z. B. via object storage) und bei Start synchronisieren.
-- Authentifizierung vor den Endpunkten ergänzen.
+- Optionale Auth-Schicht vor `/config`, `/tm-models/*` und `/api/completions`.
+- Health-Checks für Teachable-Machine-Modelle (z. B. automatische Tests nach Upload).
+- Persistente Provider-Konfiguration (derzeit nur im Browser-Storage).
 
 ## 10. Lizenz
 - Die Anwendung steht unter der [GNU Affero General Public License v3.0](LICENSE).
