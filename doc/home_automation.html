@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Home-Automation · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        background: #f6f8fc;
+        color: #0f172a;
+        line-height: 1.6;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #0f172a;
+        color: #f7fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Home-Automation Guide</h1>
+      <p>So lassen sich Kameras, Home Assistant oder Node-RED mit dem Analyzer koppeln.</p>
+      <nav>
+        <a href="/doc/index.html">Zurück</a>
+        <a href="/doc/batch.html">Batch</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Grundidee</h2>
+      <ol>
+        <li>Ein Sensor oder eine Kamera erstellt regelmäßig ein Bild.</li>
+        <li>Das Bild wird via HTTP an <code>/analyze</code> oder <code>/api/opencore/analyze-batch</code> gesendet.</li>
+        <li>Die JSON-Antwort enthält Texte und Schlüsselwörter, auf deren Basis Automationen laufen.</li>
+      </ol>
+      <p>
+        Für reine TM-Inferenz ohne LLM kann <code>analysis_mode=ml</code> gesetzt werden. Der Analyzer liefert dann nur die
+        Klassifikation und spart GPT-Latenz, ideal für Schwellenwerte oder schnelle Alerts.
+      </p>
+    </section>
+
+    <section>
+      <h2>curl Beispiel</h2>
+      <pre><code>curl -X POST http://ottcolab.local:8000/analyze \
+  -F "prompt=Pest-Detection" \
+  -F "image=@/tmp/cam/latest.jpg" \
+  -F "model_id=builtin" \
+  -F "analysis_mode=ml"</code></pre>
+    </section>
+
+    <section>
+      <h2>Batch & Analyse-Modus</h2>
+      <p>Batch-Anfragen akzeptieren mehrere Dateien (<code>files[]</code>) und optional <code>analysis_mode</code>:</p>
+      <pre><code>curl -X POST http://ottcolab.local:8000/api/opencore/analyze-batch \
+  -F "prompt=Bag Appeal" \
+  -F "analysis_mode=hybrid" \
+  -F "files[]=@/data/cam1.jpg" \
+  -F "files[]=@/data/cam2.jpg"</code></pre>
+      <p>Hybrid liefert LLM-Texte, ML-only reduziert den Output auf Klassifikations-JSON.</p>
+    </section>
+
+    <section>
+      <h2>Python Script</h2>
+      <pre><code>import requests, time, pathlib
+
+PROMPT = "Bud-Health / Schimmel"
+MODEL = "builtin"
+URL = "http://ottcolab.local:8000/analyze"
+IMAGE = pathlib.Path("/data/capture.jpg")
+
+while True:
+    files = {"image": IMAGE.open("rb")}
+    data = {"prompt": PROMPT, "model_id": MODEL}
+    resp = requests.post(URL, files=files, data=data, timeout=60)
+    resp.raise_for_status()
+    payload = resp.json()
+    if "Schimmel" in payload.get("gpt_response", ""):
+        print("ALERT: möglicher Schimmel")
+    time.sleep(1800)
+</code></pre>
+    </section>
+
+    <section>
+      <h2>Node-RED Flow (Beschreibung)</h2>
+      <ul>
+        <li><strong>Inject Node:</strong> Triggert alle 30 Minuten.</li>
+        <li><strong>HTTP Request Node:</strong> POST auf <code>/analyze</code> mit Bild aus einer Datei-Node.</li>
+        <li><strong>Function Node:</strong> Prüft <code>msg.payload.gpt_response</code> auf Schlüsselwörter („mold“, „pest“).</li>
+        <li><strong>Notification Node:</strong> Sendet Nachricht an Mobilgeräte.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Home Assistant</h2>
+      <pre><code># configuration.yaml
+rest:
+  - resource: http://ottcolab.local:8000/analyze
+    method: POST
+    payload: "prompt=Bag%20Appeal&model_id=builtin"
+    binary_sensor:
+      - name: "OPENCORE Mold Watch"
+        value_template: >-
+          {% set text = value_json.get('gpt_response', '') %}
+          {{ 'Schimmel' in text or 'mold' in text.lower() }}
+
+# automation.yaml
+- alias: "Warnung bei Mold Detection"
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.opencore_mold_watch
+      to: 'on'
+  action:
+    - service: notify.mobile_app
+      data:
+        message: "OPENCORE meldet Hinweise auf Schimmel im letzten Upload."
+</code></pre>
+      <p>Die Logik basiert auf Textfeldern, nicht auf Scores.</p>
+    </section>
+
+    <section>
+      <h2>Streams & Scheduler</h2>
+      <p>
+        Wer Kameras dauerhaft anbinden möchte, nutzt die Stream-API (<code>/api/opencore/streams</code>). Ein POST mit Quelle,
+        Analysemodus und Intervallen erzeugt einen Hintergrundjob, der alle 30 Sekunden einen Batch-Report liefert. Details siehe
+        <a href="/doc/streams.html">Video &amp; Streams</a>.
+      </p>
+    </section>
+  </body>
+</html>

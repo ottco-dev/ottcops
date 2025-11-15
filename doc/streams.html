@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE · Video- & Stream-Automation</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f5f7fb;
+        color: #0b1321;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0f172a;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow: auto;
+      }
+      code {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+      }
+      th,
+      td {
+        border: 1px solid #d6dae5;
+        padding: 0.5rem;
+        text-align: left;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Video- & Stream-Automation</h1>
+      <p>
+        Das neue Stream-Dashboard erlaubt es, Snapshot- oder RTSP-Kameras einzubinden. Der Analyzer sammelt alle 5 Sekunden (oder
+        nach individueller Vorgabe) Frames, bündelt sie zu Multi-Batches und führt alle 30 Sekunden eine ML-only- oder
+        Hybrid-Analyse aus. Ergebnisse landen als JSON im Stream-Status und lassen sich jederzeit triggern oder stoppen.
+      </p>
+    </header>
+
+    <section>
+      <h2>UI-Workflow</h2>
+      <ol>
+        <li>Öffne die Analyzer-Oberfläche (<code>/</code>) und scrolle zum Abschnitt "Stream-Orchestrierung".</li>
+        <li>Fülle die Felder: Name, Quelle (HTTP-Snapshot oder RTSP/Datei), Quellentyp, Analysemodus (ML oder Hybrid), Prompt (nur Hybrid), Modell, Capture- und Analyse-Intervalle.</li>
+        <li>Mit "Stream aktivieren" startet ein Hintergrund-Thread. Der Status erscheint im rechten Panel "Aktive Streams".</li>
+        <li>Dort lassen sich JSON-Reports öffnen, ein sofortiger Trigger senden oder der Stream stoppen.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>API-Endpunkte</h2>
+      <table>
+        <tr>
+          <th>Endpoint</th>
+          <th>Methode</th>
+          <th>Beschreibung</th>
+        </tr>
+        <tr>
+          <td><code>/api/opencore/streams</code></td>
+          <td>GET</td>
+          <td>Listet alle Streams inkl. letztem Resultat.</td>
+        </tr>
+        <tr>
+          <td><code>/api/opencore/streams</code></td>
+          <td>POST</td>
+          <td>Neuen Stream registrieren (siehe Payload unten).</td>
+        </tr>
+        <tr>
+          <td><code>/api/opencore/streams/&lt;id&gt;</code></td>
+          <td>GET</td>
+          <td>Details zu einem Stream.</td>
+        </tr>
+        <tr>
+          <td><code>/api/opencore/streams/&lt;id&gt;</code></td>
+          <td>DELETE</td>
+          <td>Stoppt den Stream.</td>
+        </tr>
+        <tr>
+          <td><code>/api/opencore/streams/&lt;id&gt;/trigger</code></td>
+          <td>POST</td>
+          <td>Erzwingt sofort eine Batch-Analyse mit den aktuell gepufferten Frames.</td>
+        </tr>
+      </table>
+
+      <h3>Beispiel-Payload</h3>
+      <pre><code>{
+  "label": "Growzelt Nord",
+  "source_url": "http://192.168.0.25:8080/snapshot.jpg",
+  "source_type": "snapshot",        // alternativ "video" (RTSP, Datei, Webcam)
+  "analysis_mode": "hybrid",        // oder "ml"
+  "prompt": "Beschreibe Schimmelrisiken",
+  "model_id": "tm-budhealth-v2",
+  "capture_interval": 5,
+  "batch_interval": 30
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>Tipps für Video-Quellen</h2>
+      <ul>
+        <li><strong>Snapshot:</strong> HTTP-Kameras oder mjpg-Server liefern ein fertiges JPEG. Keine Zusatzsoftware nötig.</li>
+        <li><strong>Video:</strong> Für RTSP/H.264 wird <code>opencv-python-headless</code> verwendet. Stelle sicher, dass der Server Zugriff auf die URL hat.</li>
+        <li><strong>Frames:</strong> OPENCORE puffert bis zu 24 Frames (2 Minuten bei Standardintervallen). Ältere Frames werden verworfen.</li>
+        <li><strong>Hybrid vs. ML:</strong> ML-only empfiehlt sich für schnelle Qualitätschecks (z. B. Trichome). Hybrid nutzt zusätzlich GPT und benötigt einen Prompt.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>JSON lesen</h2>
+      <p>Eine typische Stream-Antwort sieht so aus:</p>
+      <pre><code>{
+  "summary": {"text": "Stream ML-Report: Bild 1: healthy (98.00%)."},
+  "analysis_mode": "ml",
+  "items": [
+    {
+      "image_id": "grow-nord-1",
+      "analysis": {
+        "classification": {"top_label": "healthy", "top_confidence": 0.98, ...},
+        "teachable_model": {"name": "Bud Health"},
+        "timings": {"model_ms": 210.4, "llm_ms": 0, "total_ms": 210.4}
+      }
+    }
+  ],
+  "captured": "2025-02-15T10:22:12Z"
+}</code></pre>
+      <p>Reports können im UI per JSON-Button geöffnet, heruntergeladen oder über die Share-Funktion verteilt werden.</p>
+    </section>
+
+    <section>
+      <h2>Fehlerbehandlung</h2>
+      <ul>
+        <li><strong>HTTP-Fehler:</strong> Snapshot-URLs müssen Status 200 liefern. Andere Codes stoppen den Stream und erscheinen als Fehlermeldung.</li>
+        <li><strong>OpenCV:</strong> Für RTSP muss <code>opencv-python-headless</code> installiert sein. Sonst blockiert der POST-Aufruf.</li>
+        <li><strong>Timeouts:</strong> Zu kleine Intervalle können CPU/GPU belasten. Empfohlen: ≥3 Sekunden Capture, ≥20 Sekunden Batch.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Support</h2>
+      <p>
+        Fragen zu Stream-Quellen oder Debugging? Schreibe an <strong>otcdmin@outlook.com</strong>, Instagram <strong>@ottcouture.eu</strong>
+        oder Discord <strong>discord.gg/GMMSqePfPh</strong>.
+      </p>
+    </section>
+  </body>
+</html>
