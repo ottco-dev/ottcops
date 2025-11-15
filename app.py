@@ -20,6 +20,7 @@ import secrets
 import socket
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -975,6 +976,70 @@ def _discover_model_artifact(model_path: Path) -> tuple[str, Path]:
     )
 
 
+def has_tfjs_bundle(model_dir: Path) -> bool:
+    """Return True when the TFJS trio from Teachable Machine is still present."""
+
+    return all((model_dir / name).is_file() for name in REQUIRED_TM_FILES)
+
+
+def convert_tfjs_bundle(model_dir: Path) -> Path:
+    """Convert a TFJS export into a SavedModel directory via tensorflowjs."""
+
+    tfjs_model = model_dir / "model.json"
+    weights_file = model_dir / "weights.bin"
+    if not tfjs_model.is_file() or not weights_file.is_file():
+        raise RuntimeError("TFJS Export ist unvollständig (model.json/weights.bin fehlen).")
+
+    converted_dir = model_dir / "converted-savedmodel"
+    if converted_dir.exists():
+        shutil.rmtree(converted_dir)
+    converted_dir.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        sys.executable,
+        "-m",
+        "tensorflowjs.converters.converter",
+        "--input_format=tfjs_layers_model",
+        "--output_format=tf_saved_model",
+        str(tfjs_model),
+        str(converted_dir),
+    ]
+    try:
+        completed = subprocess.run(  # noqa: S603 - intentional CLI call
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        logger.info("TFJS Modell nach SavedModel konvertiert: %s", model_dir)
+        if completed.stdout:
+            logger.debug("tensorflowjs stdout: %s", completed.stdout.strip())
+        if completed.stderr:
+            logger.debug("tensorflowjs stderr: %s", completed.stderr.strip())
+    except FileNotFoundError as exc:  # pragma: no cover - depends on environment
+        raise RuntimeError(
+            "tensorflowjs ist nicht installiert. Bitte 'pip install tensorflowjs' ausführen."
+        ) from exc
+    except subprocess.CalledProcessError as exc:  # pragma: no cover - converter errors
+        raise RuntimeError(
+            f"TFJS Konvertierung schlug fehl: {exc.stderr or exc.stdout or exc}"
+        ) from exc
+
+    return converted_dir
+
+
+def ensure_model_artifact(model_path: Path) -> tuple[str, Path]:
+    """Ensure we can find or build a loadable artifact for the given model."""
+
+    try:
+        return _discover_model_artifact(model_path)
+    except RuntimeError as original_error:
+        if has_tfjs_bundle(model_path):
+            convert_tfjs_bundle(model_path)
+            return _discover_model_artifact(model_path)
+        raise original_error
+
+
 def load_tf_model(model_path: Path) -> Any:
     """Load and cache Teachable Machine models across formats."""
 
@@ -983,7 +1048,7 @@ def load_tf_model(model_path: Path) -> Any:
     if model is not None:
         return model
 
-    artifact_type, artifact_path = _discover_model_artifact(model_path)
+    artifact_type, artifact_path = ensure_model_artifact(model_path)
     if artifact_type == "savedmodel":
         model = SavedModelWrapper(artifact_path)
     else:
@@ -1382,6 +1447,11 @@ async def upload_tm_model(
             slug = slugify(display_name)
             target_dir = build_unique_model_dir(slug)
             shutil.copytree(content_root, target_dir)
+            try:
+                ensure_model_artifact(target_dir)
+            except RuntimeError as exc:
+                shutil.rmtree(target_dir, ignore_errors=True)
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
     except zipfile.BadZipFile as exc:  # pragma: no cover - depends on user uploads
         raise HTTPException(status_code=400, detail="Ungültige ZIP-Datei.") from exc
 

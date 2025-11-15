@@ -63,6 +63,11 @@ weights.bin</code></pre>
         In <code>metadata.json</code> sollten die Klassennamen ("labels") gepflegt sein. Fehlen Einträge, erzeugt OPENCORE neutrale Namen
         (class_1 …). Nach dem Upload kann das Modell direkt als Default gesetzt und im Analyzer ausgewählt werden.
       </p>
+      <p>
+        Der Server erkennt TFJS-Exports automatisch und konvertiert sie mit <code>tensorflowjs</code> in ein TensorFlow SavedModel.
+        Scheitert die Konvertierung (fehlende Dateien oder defekte ZIP), bricht der Upload mit einer klaren Fehlermeldung ab. Es sind keine
+        manuellen CLI-Schritte nötig.
+      </p>
     </section>
 
     <section>

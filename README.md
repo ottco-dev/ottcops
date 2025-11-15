@@ -64,8 +64,9 @@ Alle UI-Einstellungen landen im Browser (`localStorage.cannabisLLMConfig`). Die 
 1. Exportiere dein Google Teachable-Machine-Projekt als **TensorFlow** Paket (enthält `metadata.json`, `model.json`, `weights.bin`).
 2. Öffne `http://localhost:8000/config` und nutze den Abschnitt „OTTCOUTURE Teachable Machine Depot“.
 3. Nach dem Upload landet das Modell unter `/TM-models/<slug>` und wird in `TM-models/registry.json` geführt.
-4. Die Listenansicht erlaubt pro Modell den Status „Standard im Analyzer“. Der Standard wird zusätzlich in `app-settings.json` notiert.
-5. Wird kein Community-Modell ausgewählt, greift der Analyzer auf `TEACHABLE_MODEL_PATH` (OPENCORE Referenz) zurück.
+4. Der Server wandelt TFJS-Exporte automatisch in ein TensorFlow SavedModel um (`tensorflowjs` wird hierzu clientseitig mitgeliefert). Fehlende Konverter oder defekte Bundles führen zu einer klaren Fehlermeldung.
+5. Die Listenansicht erlaubt pro Modell den Status „Standard im Analyzer“. Der Standard wird zusätzlich in `app-settings.json` notiert.
+6. Wird kein Community-Modell ausgewählt, greift der Analyzer auf `TEACHABLE_MODEL_PATH` (OPENCORE Referenz) zurück.
 
 > Pflichtdateien: `metadata.json`, `model.json`, `weights.bin`. Fehlen Bestandteile, lehnt der Upload ab.
 

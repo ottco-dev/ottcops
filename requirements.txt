@@ -8,3 +8,4 @@ numpy>=1.26.0
 zeroconf>=0.132.2
 requests>=2.32.0
 opencv-python-headless>=4.8.1.78
+tensorflowjs>=4.19.0
