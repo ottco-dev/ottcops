@@ -35,8 +35,10 @@ Modelle vorbereitet werden und wie die Umgebung zu konfigurieren ist.
 | `TEACHABLE_MODEL_PATH` | Optionaler Fallback-Pfad für ein lokales TM-Modell. |
 
 Weitere Persistenzdateien:
-- `app-settings.json`: speichert das Standardmodell (wird vom `/tm-models/default` Endpunkt gepflegt).
+- `app-settings.json`: speichert das Standardmodell und die Provider-/Prompt-Konfiguration aus `/api/settings/llm`.
 - `network-config.json`: merkt sich den mDNS-Status (Hostname/Port für `ottcolab.local`).
+
+Die in `app-settings.json` hinterlegten Providerdaten werden für sämtliche LLM-Aufrufe (Analyzer, Batch-/Stream-Verarbeitung und OTTO-Chat) herangezogen und überstehen so Browserwechsel oder Server-Restarts. Mehrere Profile kannst du im Config Hub anlegen/aktivieren; die Dropdowns in Analyzer, Streams und OTTO greifen dann genau dieses Profil.
 
 ## 5. Starten des Servers
 ```bash
@@ -56,7 +58,7 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 ## 7. Fehlerbehandlung
 - **400**: fehlender Prompt oder Bild.
 - **500**: TensorFlow- oder Preprocessing-Fehler.
-- **502**: Probleme beim OpenAI-Aufruf.
+- **502**: Probleme beim angebundenen LLM-Provider (OpenAI, Ollama, LM Studio …).
 - **422**: ungültiger Analysemodus oder Stream-Payload (z. B. fehlender Prompt im Hybrid-Stream).
 
 ## 8. Deployment-Hinweise
@@ -78,7 +80,7 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 ## 9. Weiterentwicklung
 - Optionale Auth-Schicht vor `/config`, `/tm-models/*` und `/api/completions`.
 - Health-Checks für Teachable-Machine-Modelle (z. B. automatische Tests nach Upload).
-- Persistente Provider-Konfiguration (derzeit nur im Browser-Storage).
+- Erweiterte Validierung/Verschlüsselung der serverseitig gespeicherten Provider-Konfiguration (`/api/settings/llm`).
 
 ## 10. Lizenz
 - Die Anwendung steht unter der [GNU Affero General Public License v3.0](LICENSE).

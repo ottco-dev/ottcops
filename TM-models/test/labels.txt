@@ -1,5 +1,0 @@
-0 Clear
-1 Clear-Cloudy
-2 Cloudy
-3 Cloudy-Amber
-4 Amber

@@ -407,6 +407,13 @@
               <small id="analysisHint">Hybrid benötigt einen Prompt.</small>
             </label>
             <label>
+              LLM-Profil
+              <select id="llmProfileSelect">
+                <option value="">Aktives Server-Profil verwenden</option>
+              </select>
+              <small>Profile werden im Config-Hub angelegt und hier pro Lauf ausgewählt.</small>
+            </label>
+            <label>
               Prompt-Template
               <select id="template-select">
                 <option value="">Template auswählen …</option>
@@ -517,6 +524,13 @@
                 <option value="hybrid">Hybrid</option>
                 <option value="ml">Nur ML</option>
               </select>
+            </label>
+            <label>
+              LLM-Profil
+              <select id="streamLlmProfile">
+                <option value="">Aktives Server-Profil verwenden</option>
+              </select>
+              <small>Auswahl gilt nur für diesen Stream-Lauf.</small>
             </label>
             <label>
               Prompt für Hybrid-Modus

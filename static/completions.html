@@ -130,6 +130,10 @@
         strukturiert und verzichten auf medizinische Aussagen.
       </p>
       <p>
+        Der Chat verwendet automatisch die im Config Hub gespeicherten Provider-Einstellungen (Base-URL, Modell, Token). Änderungen
+        unter <a href="/config" style="color: var(--accent)">/config</a> gelten somit für Analyzer, Batch-/Stream-Läufe und OTTO.
+      </p>
+      <p>
         Rechte & Betrieb: <strong>ottcouture.eu</strong>. Support via <strong>otcdmin@outlook.com</strong>, Instagram
         <strong>@ottcouture.eu</strong> oder Discord
         <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
@@ -147,6 +151,12 @@
           strukturierte Antwort mit klaren Handlungsschritten.
         </p>
         <form id="otto-form">
+          <label style="display: block; margin-bottom: 0.5rem; color: rgba(255, 255, 255, 0.8)">
+            LLM-Profil für diese Session
+            <select id="otto-llm-profile" style="margin-top: 0.35rem; width: 100%; padding: 0.6rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff;">
+              <option value="">Aktives Server-Profil verwenden</option>
+            </select>
+          </label>
           <textarea id="otto-input" placeholder="Z. B. Wie optimiere ich VPD bei 26 °C Raumtemperatur?" required></textarea>
           <button type="submit">Antwort abrufen</button>
         </form>
@@ -171,6 +181,29 @@
       const form = document.getElementById("otto-form");
       const input = document.getElementById("otto-input");
       const output = document.getElementById("otto-output");
+      const profileSelect = document.getElementById("otto-llm-profile");
+
+      async function loadProfiles() {
+        if (!profileSelect) return;
+        try {
+          const response = await fetch("/api/settings/llm/profiles");
+          if (!response.ok) return;
+          const data = await response.json();
+          const profiles = data.profiles || [];
+          const active = data.active_profile_id || "";
+          profileSelect.innerHTML = '<option value="">Aktives Server-Profil verwenden</option>';
+          profiles.forEach((profile) => {
+            const option = document.createElement("option");
+            option.value = profile.id;
+            const provider = (profile.config && profile.config.provider) || "openai";
+            option.textContent = `${profile.name} (${provider})`;
+            profileSelect.appendChild(option);
+          });
+          profileSelect.value = active || "";
+        } catch (error) {
+          console.warn("LLM-Profile konnten nicht geladen werden", error);
+        }
+      }
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -184,7 +217,7 @@
           const response = await fetch("/api/completions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt }),
+            body: JSON.stringify({ prompt, llm_profile_id: profileSelect?.value || undefined }),
           });
           if (!response.ok) {
             const error = await response.json().catch(() => ({}));
@@ -196,6 +229,8 @@
           output.textContent = error.message;
         }
       });
+
+      loadProfiles();
     </script>
   </body>
 </html>

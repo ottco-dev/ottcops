@@ -37,6 +37,7 @@ const STORAGE_KEYS = {
   THEME: "opencore_theme",
   TEMPLATES: "opencore_custom_templates",
   API_SETTINGS: "opencore_settings",
+  ACTIVE_LLM_PROFILE: "opencore_active_llm_profile",
 };
 
 const state = {
@@ -51,6 +52,9 @@ const state = {
   streams: [],
   streamTimer: null,
   models: [],
+  llmProfiles: [],
+  activeLlmProfileId: null,
+  selectedLlmProfileId: null,
 };
 
 const dom = {};
@@ -61,6 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initTemplates();
   bindEvents();
   loadModels();
+  loadLlmProfiles();
   applyDebugFromQuery();
   updatePreviewGrid();
   renderResultPlaceholder();
@@ -118,6 +123,8 @@ function cacheDom() {
   dom.analysisMode = document.getElementById("analysisMode");
   dom.analysisHint = document.getElementById("analysisHint");
   dom.mlDebugLog = document.getElementById("mlDebugLog");
+  dom.llmProfileSelect = document.getElementById("llmProfileSelect");
+  dom.streamLlmProfile = document.getElementById("streamLlmProfile");
   dom.mlDebugLogText = document.getElementById("mlDebugLogText");
   dom.streamForm = document.getElementById("streamForm");
   dom.streamName = document.getElementById("streamName");
@@ -237,6 +244,12 @@ function bindEvents() {
   dom.closeImageModal.addEventListener("click", () => closeModal(dom.imageModal));
   dom.zoomSlider.addEventListener("input", handleZoomChange);
   dom.analysisMode.addEventListener("change", handleAnalysisModeChange);
+  if (dom.llmProfileSelect) {
+    dom.llmProfileSelect.addEventListener("change", handleLlmProfileChange);
+  }
+  if (dom.streamLlmProfile) {
+    dom.streamLlmProfile.addEventListener("change", handleLlmProfileChange);
+  }
   dom.streamForm.addEventListener("submit", handleStreamSubmit);
   dom.streamRefresh.addEventListener("click", loadStreams);
   window.addEventListener("keyup", (event) => {
@@ -457,6 +470,9 @@ async function handleAnalyzeSubmit(event) {
     formData.append("debug", "1");
   }
   formData.append("analysis_mode", state.analysisMode);
+  if (state.selectedLlmProfileId) {
+    formData.append("llm_profile_id", state.selectedLlmProfileId);
+  }
   let endpoint = state.files.length > 1 ? "/api/opencore/analyze-batch" : "/analyze";
   if (state.files.length > 1) {
     state.files.forEach((file) => formData.append("files[]", file));
@@ -598,9 +614,11 @@ function renderDebug(debug, clientMs) {
   }
   dom.debugPanel.classList.add("active");
   const timings = debug?.timings || {};
+  const llmProfile = debug?.llm_profile_id || state.selectedLlmProfileId || state.activeLlmProfileId || "Server-Default";
   dom.debugPanel.innerHTML = `
     <strong>Request-ID:</strong> ${debug?.request_id || "n/a"}<br />
     <strong>Modell:</strong> ${debug?.model_name || "OPENCORE"} (${debug?.model_version || ""})<br />
+    <strong>LLM-Profil:</strong> ${llmProfile}<br />
     <strong>Timings:</strong> Modell ${timings.model_ms || "?"} ms · LLM ${timings.llm_ms || "?"} ms · Gesamt ${
     timings.total_ms || "?"
   } ms<br />
@@ -826,6 +844,7 @@ async function handleStreamSubmit(event) {
     analysis_mode: dom.streamAnalysisMode.value,
     prompt: dom.streamPrompt.value.trim(),
     model_id: dom.streamModel.value || undefined,
+    llm_profile_id: state.selectedLlmProfileId || undefined,
     capture_interval: Number(dom.streamCaptureInterval.value) || 5,
     batch_interval: Number(dom.streamBatchInterval.value) || 30,
   };
@@ -875,6 +894,7 @@ function renderStreamList() {
       </header>
       <p class="disclaimer">${summary}</p>
       ${errorHtml}
+      <small class="disclaimer">LLM-Profil: ${stream.llm_profile_id || state.activeLlmProfileId || "Server-Default"}</small>
       <small class="disclaimer">Letztes Capture: ${stream.last_capture_ts ? new Date(stream.last_capture_ts * 1000).toLocaleTimeString() : "-"}</small>
     `;
     const footer = document.createElement("footer");
@@ -897,6 +917,52 @@ function renderStreamList() {
     item.appendChild(footer);
     dom.streamList.appendChild(item);
   });
+}
+
+async function loadLlmProfiles() {
+  if (!dom.llmProfileSelect) return;
+  const stored = localStorage.getItem(STORAGE_KEYS.ACTIVE_LLM_PROFILE);
+  if (!state.selectedLlmProfileId && stored !== null) {
+    state.selectedLlmProfileId = stored || "";
+  }
+  try {
+    const payload = await apiRequest("/api/settings/llm/profiles");
+    state.llmProfiles = payload.profiles || [];
+    state.activeLlmProfileId = payload.active_profile_id || null;
+    if (!state.selectedLlmProfileId) {
+      state.selectedLlmProfileId = state.activeLlmProfileId || "";
+    }
+    renderLlmProfiles();
+  } catch (error) {
+    showToast(`LLM-Profile konnten nicht geladen werden: ${error.message}`);
+  }
+}
+
+function renderLlmProfiles() {
+  const selects = [dom.llmProfileSelect, dom.streamLlmProfile].filter(Boolean);
+  selects.forEach((select) => {
+    select.innerHTML = '<option value="">Aktives Server-Profil verwenden</option>';
+    state.llmProfiles.forEach((profile) => {
+      const option = document.createElement("option");
+      option.value = profile.id;
+      const provider = (profile.config && profile.config.provider) || "openai";
+      option.textContent = `${profile.name} (${provider})`;
+      select.appendChild(option);
+    });
+    if (state.selectedLlmProfileId !== null) {
+      select.value = state.selectedLlmProfileId || "";
+    }
+  });
+}
+
+function handleLlmProfileChange(event) {
+  state.selectedLlmProfileId = event.target.value || "";
+  if (state.selectedLlmProfileId) {
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_LLM_PROFILE, state.selectedLlmProfileId);
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.ACTIVE_LLM_PROFILE);
+  }
+  renderLlmProfiles();
 }
 
 async function stopStream(streamId) {
