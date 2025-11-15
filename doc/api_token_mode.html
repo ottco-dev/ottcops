@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>API-Token-Mode · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        background: #fbfbfe;
+        color: #0f172a;
+        line-height: 1.6;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #0f172a;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>API-Token-Mode</h1>
+      <p>Mit dem Professional Mode lässt sich jede Instanz gegen eine eigene API-Base-URL und ein Token richten.</p>
+      <nav>
+        <a href="/doc/index.html">Zurück</a>
+        <a href="/doc/export.html">Export</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Konfiguration</h2>
+      <ol>
+        <li>Auf der Analyzer-Seite das Zahnrad oben rechts anklicken.</li>
+        <li>Base-URL (z. B. <code>https://opencore.partner.tld</code>) eintragen.</li>
+        <li>API-Token eingeben. Das Feld ist als Passwortfeld ausgelegt.</li>
+        <li>Toggle „API-Token-Mode aktivieren“ einschalten und speichern.</li>
+      </ol>
+      <p>Die Daten werden ausschließlich im lokalen Browser gespeichert (<code>localStorage.opencore_settings</code>).</p>
+    </section>
+
+    <section>
+      <h2>Requests</h2>
+      <p>Solange der Modus aktiv ist, baut das Frontend alle Requests gegen die konfigurierte Base-URL und setzt automatisch einen <code>Authorization: Bearer &lt;token&gt;</code>-Header.</p>
+      <pre><code># curl
+curl -X POST "https://partner/api/opencore/analyze" \
+  -H "Authorization: Bearer &lt;token&gt;" \
+  -F "prompt=Bag Appeal" \
+  -F "image=@bud.jpg"
+
+# Python
+import requests
+url = "https://partner/api/opencore/analyze"
+headers = {"Authorization": "Bearer &lt;token&gt;"}
+files = {"image": open("bud.jpg", "rb")}
+data = {"prompt": "Trichome-Reifegrad"}
+resp = requests.post(url, headers=headers, files=files, data=data)
+print(resp.json())
+
+# Node.js (fetch)
+const form = new FormData();
+form.append("prompt", "Pest-Detection");
+form.append("image", fs.createReadStream("bud.jpg"));
+const res = await fetch("https://partner/api/opencore/analyze", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${token}` },
+  body: form,
+});
+console.log(await res.json());</code></pre>
+    </section>
+
+    <section>
+      <h2>Sicherheit</h2>
+      <ul>
+        <li>Das Backend loggt den Token nicht.</li>
+        <li>Browser-Speicher kann manuell geleert werden (Button „Einstellungen zurücksetzen“ im Modal).</li>
+        <li>Bei deaktiviertem Modus laufen alle Requests wieder lokal gegen <code>/analyze</code> bzw. <code>/api/opencore/*</code>.</li>
+      </ul>
+    </section>
+  </body>
+</html>

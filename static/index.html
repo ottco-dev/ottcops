@@ -1,96 +1,644 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <title>Teachable Machine + GPT Demo</title>
+    <title>OTTCOUTURE OPENCORE Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        margin: 2rem;
-        background: #f5f7fb;
+      :root {
+        --bg: radial-gradient(circle at 20% 20%, rgba(64, 255, 163, 0.08), transparent 45%),
+          radial-gradient(circle at 75% 0%, rgba(111, 125, 255, 0.12), transparent 45%), #05060f;
+        --panel: rgba(6, 8, 18, 0.9);
+        --card: rgba(10, 12, 32, 0.95);
+        --text: #f8fbff;
+        --muted: rgba(255, 255, 255, 0.75);
+        --border: rgba(255, 255, 255, 0.1);
+        --accent: #40ffa3;
+        --accent-2: #6f7dff;
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       }
-      h1 {
-        color: #1f3a7d;
+      body.theme-light {
+        --bg: linear-gradient(145deg, #f2f5fb, #ffffff);
+        --panel: #ffffff;
+        --card: #f8fbff;
+        --text: #081126;
+        --muted: rgba(8, 17, 38, 0.65);
+        --border: rgba(8, 17, 38, 0.12);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        padding: 2rem clamp(1rem, 3vw, 3rem) 4rem;
+      }
+      header.hero {
+        border-radius: 32px;
+        padding: clamp(1.5rem, 3vw, 3rem);
+        border: 1px solid var(--border);
+        background: linear-gradient(135deg, rgba(10, 12, 30, 0.92), rgba(5, 7, 18, 0.92));
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        align-items: flex-end;
+      }
+      body.theme-light header.hero {
+        background: linear-gradient(135deg, #ffffff, #f1f3fb);
+      }
+      .hero__info h1 {
+        margin: 0 0 0.5rem;
+        font-size: clamp(2.1rem, 4vw, 3.6rem);
+      }
+      .hero__info p {
+        margin: 0.4rem 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .hero__actions {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+        margin-left: auto;
+      }
+      .pill-button,
+      .hero__actions a {
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        padding: 0.7rem 1.3rem;
+        background: rgba(255, 255, 255, 0.06);
+        color: inherit;
+        text-decoration: none;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .pill-button.accent {
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        color: #020305;
+        border: none;
+      }
+      main {
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+      .grid {
+        display: grid;
+        gap: 1.75rem;
+      }
+      .main-grid {
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      }
+      .streams-grid {
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      }
+      .card {
+        border-radius: 28px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        padding: clamp(1.25rem, 2vw, 2rem);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+      }
+      body.theme-light .card {
+        box-shadow: none;
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.35rem;
       }
       form {
         display: flex;
         flex-direction: column;
         gap: 1rem;
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        max-width: 480px;
+      }
+      label {
+        font-weight: 600;
+        color: var(--muted);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      textarea,
+      select,
+      input[type="text"],
+      input[type="number"],
+      input[type="url"],
+      input[type="file"],
+      input[type="password"],
+      input[type="range"] {
+        background: rgba(5, 7, 18, 0.65);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 0.9rem 1rem;
+        color: var(--text);
+        font-family: inherit;
+      }
+      body.theme-light textarea,
+      body.theme-light select,
+      body.theme-light input[type="text"],
+      body.theme-light input[type="url"],
+      body.theme-light input[type="number"],
+      body.theme-light input[type="file"],
+      body.theme-light input[type="password"],
+      body.theme-light input[type="range"] {
+        background: #f3f6ff;
+        color: #050713;
       }
       textarea {
-        min-height: 120px;
+        min-height: 140px;
+        resize: vertical;
       }
-      #result {
-        white-space: pre-wrap;
-        margin-top: 2rem;
-        padding: 1rem;
-        border-radius: 8px;
-        background: #fff;
-        box-shadow: inset 0 0 0 1px #ececec;
+      .dropzone {
+        border: 2px dashed rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 1.25rem;
+        text-align: center;
+        color: var(--muted);
       }
-      button {
-        background: #2563eb;
-        border: none;
-        color: #fff;
+      .dropzone.dragover {
+        border-color: var(--accent);
+        background: rgba(64, 255, 163, 0.1);
+      }
+      .template-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 0.75rem;
+      }
+      .preview-item {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 0.6rem;
+        text-align: center;
+        cursor: zoom-in;
+      }
+      .preview-item img {
+        width: 100%;
+        height: 90px;
+        object-fit: cover;
+        border-radius: 14px;
+      }
+      .classification-block {
+        border: 1px solid var(--border);
+        border-radius: 16px;
         padding: 0.75rem 1rem;
-        font-size: 1rem;
-        border-radius: 8px;
+        margin: 1rem 0;
+        background: rgba(4, 6, 18, 0.5);
+      }
+      .classification-block ul {
+        margin: 0.5rem 0 0;
+        padding-left: 1.2rem;
+      }
+      .action-row {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      button.primary {
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #05060f;
+        font-weight: 600;
+        padding: 0.95rem 1.5rem;
         cursor: pointer;
       }
-      button:disabled {
-        background: #93c5fd;
+      .tab-bar {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+      }
+      .tab-bar button {
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: inherit;
+        padding: 0.4rem 1rem;
+        cursor: pointer;
+      }
+      .tab-bar button.active {
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        border: none;
+        color: #05060f;
+      }
+      #result-display {
+        border-radius: 20px;
+        border: 1px solid rgba(64, 255, 163, 0.35);
+        padding: 1.2rem;
+        min-height: 180px;
+        background: rgba(4, 6, 15, 0.9);
+      }
+      body.theme-light #result-display {
+        background: #f7f8ff;
+        color: #050713;
+      }
+      #result-json {
+        border-radius: 18px;
+        border: 1px solid var(--border);
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(5, 7, 18, 0.9);
+        font-family: "Space Mono", monospace;
+        max-height: 280px;
+        overflow: auto;
+        font-size: 0.85rem;
+      }
+      .debug-panel {
+        margin-top: 1rem;
+        border-radius: 16px;
+        border: 1px dashed rgba(255, 255, 255, 0.3);
+        padding: 1rem;
+        display: none;
+        font-size: 0.9rem;
+      }
+      .debug-panel.active {
+        display: block;
+      }
+      .stream-card form small {
+        color: var(--muted);
+      }
+      .stream-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        max-height: 480px;
+        overflow: auto;
+      }
+      .stream-item {
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 1rem;
+        background: rgba(8, 10, 22, 0.85);
+      }
+      .stream-item header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .stream-item footer {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .stream-item footer button {
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: inherit;
+        padding: 0.35rem 0.9rem;
+        cursor: pointer;
+      }
+      .disclaimer {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 3, 10, 0.85);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+      }
+      .overlay.hidden {
+        display: none;
+      }
+      .modal-card {
+        background: var(--panel);
+        border-radius: 28px;
+        border: 1px solid var(--border);
+        padding: 2rem;
+        width: min(720px, 92%);
+        color: var(--text);
+      }
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+      }
+      #jsonFullscreenOutput {
+        max-height: 70vh;
+        overflow: auto;
+        font-family: "Space Mono", monospace;
+      }
+      .toast {
+        position: fixed;
+        right: 1.5rem;
+        bottom: 1.5rem;
+        padding: 0.85rem 1.1rem;
+        background: rgba(2, 3, 10, 0.95);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        display: none;
+        z-index: 99;
+      }
+      .toast.active {
+        display: block;
+      }
+      footer {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
       }
     </style>
   </head>
   <body>
-    <h1>Teachable Machine + GPT Demo</h1>
-    <p>
-      This minimal UI posts to <code>/analyze</code>. Use it when you do not want to
-      open Swagger.
-    </p>
-    <form id="analyze-form">
-      <label>
-        Prompt
-        <textarea id="prompt" placeholder="Describe what you would like the assistant to do" required></textarea>
-      </label>
-      <label>
-        Image
-        <input id="image" type="file" accept="image/*" required />
-      </label>
-      <button type="submit">Analyze</button>
-    </form>
-    <pre id="result"></pre>
-    <script>
-      const form = document.getElementById("analyze-form");
-      const result = document.getElementById("result");
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        result.textContent = "Running...";
-        const prompt = document.getElementById("prompt").value;
-        const image = document.getElementById("image").files[0];
-        if (!prompt || !image) {
-          result.textContent = "Prompt and image are required.";
-          return;
-        }
-        const formData = new FormData();
-        formData.append("prompt", prompt);
-        formData.append("image", image);
-        try {
-          const response = await fetch("/analyze", {
-            method: "POST",
-            body: formData,
-          });
-          const payload = await response.json();
-          result.textContent = JSON.stringify(payload, null, 2);
-        } catch (error) {
-          result.textContent = `Failed to contact API: ${error}`;
-        }
-      });
-    </script>
+    <header class="hero">
+      <div class="hero__info">
+        <p style="letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent)">OTTCOUTURE.EU · OPENCORE</p>
+        <h1>OPENCORE Analyzer Control Board</h1>
+        <p>
+          Der Analyzer trennt Teachable-Machine-Inferenz und LLM-Auswertung. Sie entscheiden, ob nur ML-Signale, der komplette
+          Hybrid-Stack oder Stream-Automation ausgeführt wird. Alle Rechte liegen bei ottcouture.eu – Feedback willkommen via
+          otcdmin@outlook.com, Instagram @ottcouture.eu oder Discord
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+        </p>
+      </div>
+      <div class="hero__actions">
+        <button class="pill-button" id="themeToggle">Light/Dark</button>
+        <button class="pill-button" id="apiSettingsBtn">API-Token-Mode</button>
+        <a class="pill-button" href="/doc/index.html" target="_blank" rel="noopener">Dokumentation</a>
+        <a class="pill-button" href="/config">Config Hub</a>
+        <a class="pill-button" href="/completions">OTTO Chat</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="grid main-grid">
+        <article class="card card--prompt" style="grid-column: span 2; min-width: 320px">
+          <h2>Manueller Analyzer</h2>
+          <p class="disclaimer">
+            Wählen Sie Modell, Prompt und Analysemodus (ML-only oder Hybrid). Templates lassen sich speichern und lokal verwalten.
+          </p>
+          <form id="analyze-form">
+            <label>
+              Analysemodus
+              <select id="analysisMode">
+                <option value="hybrid">Hybrid (TM + GPT)</option>
+                <option value="ml">Nur Teachable Machine</option>
+              </select>
+              <small id="analysisHint">Hybrid benötigt einen Prompt.</small>
+            </label>
+            <label>
+              Prompt-Template
+              <select id="template-select">
+                <option value="">Template auswählen …</option>
+              </select>
+            </label>
+            <div class="action-row" style="justify-content: space-between">
+              <button class="pill-button" type="button" id="saveTemplateBtn">Prompt als Template sichern</button>
+              <label class="action-row" style="gap: 0.4rem">
+                <input type="checkbox" id="debugToggle" /> Debug anzeigen
+              </label>
+            </div>
+            <div id="customTemplateList" class="template-grid"></div>
+            <label>
+              Prompt
+              <textarea id="prompt" placeholder="Beschreibe den gewünschten Fokus"></textarea>
+            </label>
+            <label>
+              Teachable-Machine-Modell
+              <select id="model-select">
+                <option value="">Modelle werden geladen …</option>
+              </select>
+              <small id="model-status">OPENCORE nutzt das Standardmodell, falls keine Auswahl erfolgt.</small>
+            </label>
+            <label>
+              Bildmaterial
+              <input id="image" type="file" accept="image/*" multiple />
+              <small id="fileStatus">Mehrfachauswahl möglich oder Dateien unten in die Dropzone ziehen.</small>
+            </label>
+            <div id="dropzone" class="dropzone">Dateien hier ablegen oder Auswahl oben nutzen.</div>
+            <div class="action-row">
+              <button class="primary" type="submit" id="analyzeBtn">Analyse ausführen</button>
+              <span id="runStatus" class="disclaimer">Bereit.</span>
+            </div>
+          </form>
+        </article>
+
+        <article class="card card--upload">
+          <h2>Preview</h2>
+          <p class="disclaimer">Thumbnails anklicken, um Zoom und Details zu prüfen.</p>
+          <div id="imagePreviewContainer" class="preview-grid"></div>
+        </article>
+
+        <article class="card card--result" style="grid-column: span 2; min-width: 320px">
+          <div class="action-row" style="justify-content: space-between; align-items: flex-start">
+            <div>
+              <h2>Result-Console</h2>
+              <p class="disclaimer">Tabs zeigen Gesamtbericht und Einzelbilder. JSON bleibt roh abrufbar.</p>
+            </div>
+            <div class="action-row" style="gap: 0.5rem">
+              <button type="button" class="pill-button" id="jsonFullscreenBtn">Fullscreen</button>
+              <button type="button" class="pill-button" id="jsonDownloadBtn">JSON</button>
+              <button type="button" class="pill-button" id="pdfExportBtn">PDF</button>
+              <button type="button" class="pill-button" id="shareBtn">Share</button>
+            </div>
+          </div>
+          <div id="result-tabs" class="tab-bar"></div>
+          <div id="result-display">
+            <p class="disclaimer">Noch keine Analyse gestartet.</p>
+          </div>
+          <pre id="result-json">{ "status": "bereit" }</pre>
+          <div id="debugPanel" class="debug-panel"></div>
+        </article>
+
+        <article class="card card--insights">
+          <h2>Ops & Hinweise</h2>
+          <p class="disclaimer">
+            OPENCORE liefert strukturierte Telemetrie für Enterprise-Workflows. Dokumentation zu Templates, Batch, Debug, Token-Mode,
+            UI-Shortcuts, Exporten, Stream-Automation, Raspberry-Pi-Deployments und Custom-Model-Builds finden Sie unter
+            <a href="/doc/index.html" target="_blank" rel="noopener">/doc</a>.
+          </p>
+          <p class="disclaimer">
+            Support & Rechte: ottcouture.eu · otcdmin@outlook.com · Instagram @ottcouture.eu · Discord
+            <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+          </p>
+        </article>
+      </section>
+
+      <section class="grid streams-grid">
+        <article class="card stream-card">
+          <h2>Stream-Orchestrierung</h2>
+          <p class="disclaimer">
+            Streams holen alle 5 Sekunden Frames (konfigurierbar) von Snapshot- oder Videoquellen, sammeln die Batch-Bilder und
+            stoßen automatisch ML-only oder Hybrid-Auswertungen an. Perfekt für Growzelt-Kameras oder Raspberry-Pi-Edges.
+          </p>
+          <form id="streamForm">
+            <label>
+              Bezeichnung
+              <input type="text" id="streamName" placeholder="z. B. Zelt Nord" />
+            </label>
+            <label>
+              Quelle (Snapshot-URL oder Video-Stream)
+              <input type="url" id="streamUrl" placeholder="http://cam/snapshot.jpg" required />
+            </label>
+            <label>
+              Quellentyp
+              <select id="streamSourceType">
+                <option value="snapshot">Snapshot (HTTP/JPEG)</option>
+                <option value="video">Video (RTSP/Datei)</option>
+              </select>
+            </label>
+            <label>
+              Analysemodus
+              <select id="streamAnalysisMode">
+                <option value="hybrid">Hybrid</option>
+                <option value="ml">Nur ML</option>
+              </select>
+            </label>
+            <label>
+              Prompt für Hybrid-Modus
+              <textarea id="streamPrompt" placeholder="Nur nötig, wenn Hybrid aktiv ist."></textarea>
+            </label>
+            <label>
+              Modell
+              <select id="streamModel">
+                <option value="">Modelle werden geladen …</option>
+              </select>
+            </label>
+            <div class="action-row">
+              <label style="flex: 1">
+                Capture-Intervall (Sek.)
+                <input type="number" id="streamCaptureInterval" min="1" value="5" />
+              </label>
+              <label style="flex: 1">
+                Analyse-Intervall (Sek.)
+                <input type="number" id="streamBatchInterval" min="5" value="30" />
+              </label>
+            </div>
+            <button class="primary" type="submit">Stream aktivieren</button>
+          </form>
+        </article>
+        <article class="card">
+          <div class="action-row" style="justify-content: space-between">
+            <h2>Aktive Streams</h2>
+            <div class="action-row" style="gap: 0.5rem">
+              <button class="pill-button" type="button" id="streamRefresh">Neu laden</button>
+            </div>
+          </div>
+          <p id="streamStatus" class="disclaimer">Noch keine Streams registriert.</p>
+          <div id="streamList" class="stream-list"></div>
+        </article>
+      </section>
+    </main>
+
+    <footer>
+      OPENCORE Analyzer – Enterprise Tooling von ottcouture.eu · Dokumentation, Tutorials und Hardware-Guides liegen unter
+      <a href="/doc/index.html" target="_blank" rel="noopener">/doc</a>.
+    </footer>
+
+    <div class="overlay hidden" id="templateModal">
+      <div class="modal-card">
+        <h3>Eigenes Template speichern</h3>
+        <label>
+          Titel
+          <input type="text" id="templateName" placeholder="z. B. QC Run" />
+        </label>
+        <label>
+          Beschreibung
+          <textarea id="templateDescription" placeholder="Interne Erläuterung"></textarea>
+        </label>
+        <div class="modal-actions">
+          <button class="pill-button" type="button" id="cancelTemplate">Abbrechen</button>
+          <button class="pill-button accent" type="button" id="confirmTemplate">Speichern</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="apiModal">
+      <div class="modal-card">
+        <h3>API-Token-Mode</h3>
+        <label>
+          API Base URL
+          <input type="text" id="apiBaseUrl" placeholder="https://partner.tld/api" />
+        </label>
+        <label>
+          API Token
+          <input type="password" id="apiToken" placeholder="Bearer Token" />
+        </label>
+        <label class="action-row" style="gap: 0.5rem">
+          <input type="checkbox" id="apiModeEnabled" /> API-Token-Mode aktivieren
+        </label>
+        <p class="disclaimer">
+          Einstellungen werden ausschließlich lokal gespeichert. Bei aktivem Modus sendet das UI alle Requests an die Base-URL und
+          ergänzt automatisch den Authorization-Header.
+        </p>
+        <h4>Code-Beispiele</h4>
+        <pre><code>curl -X POST "$BASE/api/opencore/analyze" \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "prompt=Bag Appeal" -F "image=@bud.jpg"
+
+python requests.post(
+  f"{base}/api/opencore/analyze",
+  headers={"Authorization": f"Bearer {token}"},
+  files={"image": open("bud.jpg", "rb")},
+  data={"prompt": "Trichome"}
+)</code></pre>
+        <div class="modal-actions">
+          <button class="pill-button" type="button" id="resetApiSettings">Zurücksetzen</button>
+          <button class="pill-button" type="button" id="closeApiModal">Schließen</button>
+          <button class="pill-button accent" type="button" id="saveApiSettings">Speichern</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="imageModal">
+      <div class="modal-card" style="max-width: 900px">
+        <h3 style="display: flex; justify-content: space-between; align-items: center">
+          Bildvorschau
+          <button class="pill-button" type="button" id="closeImageModal">Schließen</button>
+        </h3>
+        <div style="text-align: center">
+          <img id="modalImage" src="" alt="Preview" style="max-width: 100%; border-radius: 16px" />
+        </div>
+        <label style="margin-top: 1rem">
+          Zoom
+          <input type="range" id="zoomSlider" min="50" max="150" value="100" />
+        </label>
+      </div>
+    </div>
+
+    <div class="overlay hidden" id="jsonFullscreen">
+      <div class="modal-card" style="max-width: 960px">
+        <h3 style="display: flex; justify-content: space-between; align-items: center">
+          JSON Vollbild
+          <button class="pill-button" type="button" id="closeJsonFullscreen">Schließen</button>
+        </h3>
+        <pre id="jsonFullscreenOutput"></pre>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+      integrity="sha512-/pC24t2EBhJ7ezCmvYzu3/n6PvJEa3TBUnIFVWMGryuVKyXjH9MuquMNFc13JUO2c+hJ1ytY1/6Yr2vNhbbXnw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script src="/static/js/app.js" defer></script>
   </body>
 </html>

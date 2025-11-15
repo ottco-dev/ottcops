@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE Analyzer · Dokumentation</title>
+    <style>
+      :root {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        color: #071019;
+        background: #f7f8fb;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f7f8fb;
+      }
+      header {
+        border-bottom: 3px solid #111527;
+        margin-bottom: 2rem;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #111527;
+      }
+      ul {
+        padding-left: 1.3rem;
+      }
+      code {
+        background: #111527;
+        color: #f7f8fb;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+        font-size: 0.95rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>OPENCORE Analyzer · Dokumentation</h1>
+      <p>
+        Dieses Portal bündelt alle Funktionsbeschreibungen für den Analyzer von <strong>ottcouture.eu</strong>. Jede Seite ist in
+        einfachem HTML gehalten und enthält Beispiele, damit Teams Funktionen schnell adaptieren können.
+      </p>
+      <nav>
+        <a href="/doc/prompts.html">Prompts &amp; Templates</a>
+        <a href="/doc/batch.html">Batch-Analyse</a>
+        <a href="/doc/debug.html">Debug-Modus</a>
+        <a href="/doc/api_token_mode.html">API-Token-Mode</a>
+        <a href="/doc/ui.html">UI-Features</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Video &amp; Streams</a>
+        <a href="/doc/models.html">ML-Modelle</a>
+        <a href="/doc/raspberry.html">Raspberry-Pi-Guides</a>
+        <a href="/doc/home_automation.html">Home-Automation</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Überblick</h2>
+      <p>
+        Der Analyzer kombiniert Teachable-Machine-Modelle mit LLM-Ausgaben und liefert die Ergebnisse als sauberes JSON. Frontend
+        und Backend bleiben bewusst klassisch: FastAPI + HTML/JS/CSS ohne zusätzliche Frameworks. Alle Funktionen lassen sich
+        unabhängig betreiben und sind hier dokumentiert.
+      </p>
+    </section>
+
+    <section>
+      <h2>Neue Kapitel</h2>
+      <ul>
+        <li><strong>Prompt-Templates:</strong> Automatisierte Vorlagen inkl. eigener Presets pro Browser.</li>
+        <li><strong>Batch-Analyse &amp; ML-only:</strong> Upload mehrerer Bilder sowie reine TM-Inferenz ohne LLM.</li>
+        <li><strong>Debug-Panel:</strong> Zeigt Request-IDs, Modellversionen und Timings.</li>
+        <li><strong>API-Token-Mode:</strong> Konfigurierbare Ziel-URL + Token für Enterprise-Instanzen.</li>
+        <li><strong>UI-Verbesserungen:</strong> Neues Layout, Stream-Dashboard, Theme-Switch, JSON-Fullscreen.</li>
+        <li><strong>Export:</strong> JSON-Download, PDF-Report, Share-Links mit Viewer.</li>
+        <li><strong>Video &amp; Streams:</strong> Scheduler für Snapshot- und RTSP-Kameras inkl. Batch-Automation.</li>
+        <li><strong>ML-Modelle:</strong> Tutorials für Teachable Machine (Easy Mode) und Label Studio + YOLO (Pro Mode).</li>
+        <li><strong>Raspberry-Pi-Guides:</strong> Montage im Growzelt, Kamera-Setup, Edge-Scripting.</li>
+        <li><strong>Home-Automation:</strong> Beispiele für Home Assistant, Node-RED und Python-Skripte.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Kontakt</h2>
+      <p>
+        Alle Rechte liegen bei <strong>ottcouture.eu</strong>. Feedback und Community-Modelle gern an
+        <strong>otcdmin@outlook.com</strong>, Instagram <strong>@ottcouture.eu</strong> oder Discord
+        <strong>discord.gg/GMMSqePfPh</strong>.
+      </p>
+    </section>
+  </body>
+</html>
