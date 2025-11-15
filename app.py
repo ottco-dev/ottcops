@@ -74,6 +74,7 @@ TFJS_REQUIRED_FILES = {"metadata.json", "model.json", "weights.bin"}
 TFJS_REQUIRED_FILES_LOWER = {name.lower() for name in TFJS_REQUIRED_FILES}
 KERAS_LABEL_FILE = "labels.txt"
 KERAS_SUFFIXES = {".keras", ".h5", ".hdf5"}
+KERAS_CUSTOM_OBJECTS: dict[str, Any] | None = None
 NETWORK_CONFIG_FILENAME = "network-config.json"
 SETTINGS_PATH = BASE_DIR / "app-settings.json"
 DOCS_DIR = BASE_DIR / "doc"
@@ -124,6 +125,23 @@ def _build_logger() -> logging.Logger:
 
 
 logger = _build_logger()
+
+
+def get_keras_custom_objects() -> dict[str, Any]:
+    """Return custom layer patches required for legacy Keras exports."""
+
+    global KERAS_CUSTOM_OBJECTS
+    if KERAS_CUSTOM_OBJECTS is None:
+
+        class DepthwiseConv2DCompat(tf.keras.layers.DepthwiseConv2D):
+            """DepthwiseConv2D that ignores the legacy 'groups' argument."""
+
+            def __init__(self, *args: Any, groups: int | None = None, **kwargs: Any) -> None:
+                kwargs.pop("groups", None)
+                super().__init__(*args, **kwargs)
+
+        KERAS_CUSTOM_OBJECTS = {"DepthwiseConv2D": DepthwiseConv2DCompat}
+    return KERAS_CUSTOM_OBJECTS
 
 
 @dataclass
@@ -1168,8 +1186,10 @@ def load_tf_model(model_path: Path) -> Any:
     if artifact_type == "savedmodel":
         model = SavedModelWrapper(artifact_path)
     else:
+        custom_objects = get_keras_custom_objects()
         try:
-            model = tf.keras.models.load_model(artifact_path)
+            with tf.keras.utils.custom_object_scope(custom_objects):
+                model = tf.keras.models.load_model(artifact_path)
         except ValueError as exc:
             saved_model_file = artifact_path / "saved_model.pb"
             if saved_model_file.is_file():
