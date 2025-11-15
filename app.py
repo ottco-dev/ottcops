@@ -110,9 +110,19 @@ DEFAULT_LLM_CONFIG = {
     "systemPrompt": "",
 }
 LLM_ALLOWED_PROVIDERS = {"openai", "ollama", "lmstudio"}
+OPENAI_BASE_URL = "https://api.openai.com/v1"
+OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+LMSTUDIO_BASE_URL = "http://127.0.0.1:1234/v1"
+LLM_HTTP_TIMEOUT = int(os.getenv("OTTC_LLM_TIMEOUT", "90"))
+ANALYZER_SYSTEM_PROMPT = (
+    "Du wertest Cannabisbilder für ottcouture.eu aus. Kombiniere Teachable-Machine-"
+    "Klassifikationen mit dem Nutzerprompt, beschreibe Risiken und empfiehl klare,"
+    "nicht-medizinische Maßnahmen."
+)
 
 _model_cache: Dict[str, Any] = {}
 _client: OpenAI | None = None
+_client_signature: tuple[str | None, str | None] | None = None
 _network_zeroconf: Zeroconf | None = None
 _network_service: ServiceInfo | None = None
 _network_runtime_config: Dict[str, Any] = {}
@@ -567,6 +577,115 @@ def reset_llm_config() -> Dict[str, Any]:
     return persist_llm_config(DEFAULT_LLM_CONFIG.copy())
 
 
+def get_effective_model_name(config: Dict[str, Any], fallback: str = GPT_MODEL) -> str:
+    candidate = (config.get("model") or fallback or GPT_MODEL).strip()
+    return candidate or GPT_MODEL
+
+
+def should_attach_vision(config: Dict[str, Any]) -> bool:
+    return str(config.get("vision") or "yes").lower() != "manual"
+
+
+def flatten_message_content(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for block in content:
+            if isinstance(block, dict):
+                if block.get("type") == "text" and block.get("text"):
+                    parts.append(str(block["text"]))
+                elif block.get("type") == "image_url":
+                    parts.append("[Bildanhang]")
+        return "\n".join(part for part in parts if part)
+    return str(content)
+
+
+def normalize_text_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    normalized: List[Dict[str, str]] = []
+    for message in messages:
+        normalized.append({
+            "role": message.get("role", "user"),
+            "content": flatten_message_content(message.get("content", "")),
+        })
+    return normalized
+
+
+def build_lmstudio_endpoint(base_url: str) -> str:
+    base = (base_url or LMSTUDIO_BASE_URL).rstrip("/")
+    if base.endswith("/chat/completions"):
+        return base
+    if base.endswith("/v1"):
+        return f"{base}/chat/completions"
+    return f"{base}/v1/chat/completions"
+
+
+def call_openai_backend(messages: List[Dict[str, Any]], config: Dict[str, Any]) -> str:
+    api_base = (config.get("apiBase") or OPENAI_BASE_URL).strip() or OPENAI_BASE_URL
+    api_key = (config.get("apiKey") or os.getenv("OPENAI_API_KEY") or "").strip()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY oder Config-Key fehlt.")
+    model_name = get_effective_model_name(config)
+    client = get_openai_client(api_base, api_key)
+    try:
+        response = client.chat.completions.create(model=model_name, messages=messages)
+    except Exception as exc:  # pragma: no cover - external call
+        raise HTTPException(status_code=502, detail=f"OpenAI API Fehler: {exc}") from exc
+    return response.choices[0].message.content.strip()
+
+
+def call_ollama_backend(messages: List[Dict[str, Any]], config: Dict[str, Any]) -> str:
+    base_url = (config.get("apiBase") or OLLAMA_BASE_URL).rstrip("/")
+    model_name = get_effective_model_name(config, fallback="llama3.1")
+    payload = {"model": model_name, "messages": normalize_text_messages(messages), "stream": False}
+    try:
+        response = requests.post(f"{base_url}/api/chat", json=payload, timeout=LLM_HTTP_TIMEOUT)
+    except requests.RequestException as exc:  # pragma: no cover - network errors
+        raise HTTPException(status_code=502, detail=f"Ollama nicht erreichbar: {exc}") from exc
+    if not response.ok:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+    data = response.json()
+    content = data.get("message", {}).get("content") or data.get("response")
+    if not content:
+        raise HTTPException(status_code=502, detail="Ollama lieferte keine Antwort.")
+    return str(content).strip()
+
+
+def call_lmstudio_backend(messages: List[Dict[str, Any]], config: Dict[str, Any]) -> str:
+    base_url = build_lmstudio_endpoint(config.get("apiBase") or LMSTUDIO_BASE_URL)
+    model_name = get_effective_model_name(config, fallback="granite-vision-3b-q4")
+    headers = {"Content-Type": "application/json"}
+    api_key = (config.get("apiKey") or "").strip()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    payload = {"model": model_name, "messages": normalize_text_messages(messages), "stream": False}
+    try:
+        response = requests.post(base_url, json=payload, headers=headers, timeout=LLM_HTTP_TIMEOUT)
+    except requests.RequestException as exc:  # pragma: no cover
+        raise HTTPException(status_code=502, detail=f"LM Studio nicht erreichbar: {exc}") from exc
+    if not response.ok:
+        raise HTTPException(status_code=response.status_code, detail=response.text)
+    data = response.json()
+    try:
+        content = data["choices"][0]["message"]["content"]
+    except (KeyError, IndexError) as exc:
+        raise HTTPException(status_code=502, detail="LM Studio Antwort unvollständig.") from exc
+    return str(content).strip()
+
+
+def execute_llm_chat(messages: List[Dict[str, Any]], config: Optional[Dict[str, Any]] = None) -> str:
+    config = config or get_llm_config()
+    provider = config.get("provider") or "openai"
+    provider = provider.lower()
+    if provider == "openai":
+        return call_openai_backend(messages, config)
+    if provider == "ollama":
+        return call_ollama_backend(messages, config)
+    if provider == "lmstudio":
+        return call_lmstudio_backend(messages, config)
+    raise HTTPException(status_code=400, detail=f"Unbekannter Provider: {provider}")
+
+
 def get_network_config_path() -> Path:
     return BASE_DIR / NETWORK_CONFIG_FILENAME
 
@@ -656,10 +775,11 @@ def build_analysis_payload(
 ) -> Dict[str, Any]:
     """Bundle classification, LLM output and metadata for a single asset."""
 
+    llm_config = get_llm_config()
     return {
         "classification": classification,
         "gpt_response": gpt_response,
-        "meta": GPTMeta(model=GPT_MODEL, success=True).dict(),
+        "meta": GPTMeta(model=get_effective_model_name(llm_config), success=True).dict(),
         "teachable_model": build_teachable_meta(model_entry),
         "timings": timings,
     }
@@ -714,28 +834,27 @@ def summarize_batch(prompt: str, items: List[Dict[str, Any]]) -> str:
     for idx, item in enumerate(items, start=1):
         snippet = item["analysis"].get("gpt_response", "")
         context_lines.append(f"Bild {idx} ({item['image_id']}): {snippet}")
-    client = get_openai_client()
     user_content = (
         "Original Prompt: "
         f"{prompt}\n" "Einzelresultate:\n" + "\n".join(context_lines)
         + "\nFormuliere eine strukturierte Zusammenfassung mit Hauptbefunden und Empfehlungen."
     )
+    config = get_llm_config()
+    messages = [
+        {
+            "role": "system",
+            "content": config.get("systemPrompt") or ANALYZER_SYSTEM_PROMPT,
+        },
+        {"role": "user", "content": user_content},
+    ]
     try:
-        response = client.chat.completions.create(
-            model=GPT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Erstelle präzise Reports zu Cannabis-Bildanalysen. Keine Medizin-Claims, nur Qualitätsbewertung.",
-                },
-                {"role": "user", "content": user_content},
-            ],
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as exc:  # pragma: no cover - depends on provider
-        logger.warning("Batch summary konnte nicht erstellt werden: %s", exc)
-        fallback = " | ".join(context_lines)
-        return f"Zusammenfassung (Fallback): {fallback[:1000]}"
+        return execute_llm_chat(messages, config)
+    except HTTPException as exc:  # pragma: no cover - provider errors
+        logger.warning("Batch summary konnte nicht erstellt werden: %s", exc.detail)
+    except Exception as exc:  # pragma: no cover - unexpected failures
+        logger.warning("Batch summary brach ab: %s", exc)
+    fallback = " | ".join(context_lines)
+    return f"Zusammenfassung (Fallback): {fallback[:1000]}"
 
 
 def summarize_ml_items(items: List[Dict[str, Any]]) -> str:
@@ -1270,13 +1389,14 @@ def load_tf_model(model_path: Path) -> Any:
     return model
 
 
-def get_openai_client() -> OpenAI:
-    """Create and cache the OpenAI client using the API key from environment variables."""
-    global _client
-    if _client is None:
-        if not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OPENAI_API_KEY environment variable must be set.")
-        _client = OpenAI()
+def get_openai_client(api_base: str | None, api_key: str) -> OpenAI:
+    """Create (and reuse) an OpenAI client for the given base URL and API key."""
+
+    global _client, _client_signature
+    fingerprint = (api_base, api_key)
+    if _client is None or _client_signature != fingerprint:
+        _client = OpenAI(api_key=api_key, base_url=api_base or None)
+        _client_signature = fingerprint
     return _client
 
 
@@ -1440,8 +1560,9 @@ def classify_image(image_bytes: bytes, model_entry: Dict[str, Any]) -> Dict[str,
 def call_gpt_with_image_context(
     user_prompt: str, classification: Dict[str, Any], image_bytes: bytes
 ) -> str:
-    """Send the classification context plus the user's prompt (and image) to GPT."""
-    client = get_openai_client()
+    """Send the classification context plus the user's prompt (and image) to the configured LLM."""
+
+    config = get_llm_config()
     distribution = ", ".join(
         f"{pred['label']}: {pred['confidence']:.2%}"
         for pred in classification["all_predictions"]
@@ -1452,40 +1573,31 @@ def call_gpt_with_image_context(
         f"Full distribution: {distribution}."
     )
 
-    base64_image = base64.b64encode(image_bytes).decode("utf-8")
-    image_payload = {
-        "type": "image_url",
-        "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"},
-    }
+    base_text = (
+        "Classification result from Teachable Machine: "
+        f"{classification_summary}\nUser prompt: {user_prompt}\n"
+        "Bitte liefere eine strukturierte Analyse mit Handlungsempfehlungen."
+    )
+
+    attach_image = bool(image_bytes) and should_attach_vision(config)
+    if attach_image:
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        user_content: Any = [
+            {"type": "text", "text": base_text},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}},
+        ]
+    else:
+        user_content = base_text
 
     messages = [
         {
             "role": "system",
-            "content": "You are an assistant that combines Teachable Machine image classification "
-            "results with user prompts to produce helpful insights.",
+            "content": config.get("systemPrompt") or ANALYZER_SYSTEM_PROMPT,
         },
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": (
-                        "Classification result from Teachable Machine: "
-                        f"{classification_summary}\nUser prompt: {user_prompt}\n"
-                        "Please analyze and provide a combined answer."
-                    ),
-                },
-                image_payload,
-            ],
-        },
+        {"role": "user", "content": user_content},
     ]
 
-    try:
-        response = client.chat.completions.create(model=GPT_MODEL, messages=messages)
-    except Exception as exc:  # pragma: no cover - external service errors
-        raise HTTPException(status_code=502, detail=f"OpenAI API error: {exc}") from exc
-
-    return response.choices[0].message.content.strip()
+    return execute_llm_chat(messages, config)
 
 
 def load_simple_ui() -> str:
@@ -1880,19 +1992,13 @@ OTTO_SYSTEM_PROMPT = (
 async def otto_completion(payload: CompletionPayload) -> JSONResponse:
     if not payload.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt darf nicht leer sein.")
-    client = get_openai_client()
-    try:
-        response = client.chat.completions.create(
-            model=GPT_MODEL,
-            messages=[
-                {"role": "system", "content": OTTO_SYSTEM_PROMPT},
-                {"role": "user", "content": payload.prompt.strip()},
-            ],
-        )
-    except Exception as exc:  # pragma: no cover - external service errors
-        raise HTTPException(status_code=502, detail=f"OpenAI API error: {exc}") from exc
-    answer = response.choices[0].message.content.strip()
-    return JSONResponse({"response": answer, "model": GPT_MODEL})
+    messages = [
+        {"role": "system", "content": OTTO_SYSTEM_PROMPT},
+        {"role": "user", "content": payload.prompt.strip()},
+    ]
+    answer = execute_llm_chat(messages)
+    config = get_llm_config()
+    return JSONResponse({"response": answer, "model": get_effective_model_name(config)})
 
 
 if __name__ == "__main__":

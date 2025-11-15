@@ -4,7 +4,7 @@ OTTCOPS ist der von [ottcouture.eu](https://ottcouture.eu) betriebene Analyzer f
 
 ## Feature Highlights
 - 🌿 **FastAPI Core** mit Analyzer, Config Deck, OTTO-Chat (`/completions`) und dokumentierten `/tm-models*` Routen.
-- 🧠 **Vision LLM Switchboard** für OpenAI, Ollama oder LM Studio inkl. System-Presetverwaltung.
+- 🧠 **Vision LLM Switchboard** für OpenAI, Ollama oder LM Studio inkl. System-Presetverwaltung und serverseitiger Persistenz für Analyzer, Streams und OTTO.
 - 🧪 **Teachable-Machine-Depot** mit ZIP-Uploads (TFJS: metadata.json/model.json/weights.bin oder Keras: keras_model.h5 + labels.txt), Registry und Standardauswahl für den Analyzer.
 - 🧵 **Model Routing**: Das Frontend kann pro Analyse den gewünschten TM-Slot wählen; die Einstellung wird zusätzlich serverseitig in `app-settings.json` persistiert.
 - 🤖 **OTTO Grow Chat** – eigener Screen für kultivierungsrelevante Fragen mit definiertem System Prompt.
@@ -51,7 +51,7 @@ Beim Start führt der Server automatisch einen Git-Vergleich gegen `https://gith
 | `OPENAI_GPT_MODEL` | optional | `gpt-4.1-mini` | LLM-ID für Cloud Vision. |
 | `TEACHABLE_MODEL_PATH` | optional | `./models/teachable_model` | Alternativer Pfad zu einem Legacy-Teachable-Model. |
 
-Die Provider-/LLM-Konfiguration aus dem Config Hub wird lokal (`localStorage.cannabisLLMConfig`) und serverseitig via `/api/settings/llm` gespeichert. Gemeinsam mit dem Standard-Teachable-Machine-Modell landen die Werte in `app-settings.json`, damit Analyzer und Config Deck nach Neustarts synchron bleiben.
+Die Provider-/LLM-Konfiguration aus dem Config Hub wird lokal (`localStorage.cannabisLLMConfig`) und serverseitig via `/api/settings/llm` gespeichert. Gemeinsam mit dem Standard-Teachable-Machine-Modell landen die Werte in `app-settings.json`, damit Analyzer, Batch-/Stream-Endpunkte und der OTTO-Chat dieselbe Provider-Konfiguration verwenden und nach Neustarts synchron bleiben.
 
 ## WiFi Broadcast (ottcolab.local)
 1. Installiere die Requirements (wir shippen `zeroconf`, wichtig für mDNS). Falls du ein bestehendes Environment nutzt, führe `pip install zeroconf` aus.

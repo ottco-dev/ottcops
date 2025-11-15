@@ -38,6 +38,8 @@ Weitere Persistenzdateien:
 - `app-settings.json`: speichert das Standardmodell und die Provider-/Prompt-Konfiguration aus `/api/settings/llm`.
 - `network-config.json`: merkt sich den mDNS-Status (Hostname/Port für `ottcolab.local`).
 
+Die in `app-settings.json` hinterlegten Providerdaten werden für sämtliche LLM-Aufrufe (Analyzer, Batch-/Stream-Verarbeitung und OTTO-Chat) herangezogen und überstehen so Browserwechsel oder Server-Restarts.
+
 ## 5. Starten des Servers
 ```bash
 export OPENAI_API_KEY="sk-..."
@@ -56,7 +58,7 @@ uvicorn app:app --host 0.0.0.0 --port 8000
 ## 7. Fehlerbehandlung
 - **400**: fehlender Prompt oder Bild.
 - **500**: TensorFlow- oder Preprocessing-Fehler.
-- **502**: Probleme beim OpenAI-Aufruf.
+- **502**: Probleme beim angebundenen LLM-Provider (OpenAI, Ollama, LM Studio …).
 - **422**: ungültiger Analysemodus oder Stream-Payload (z. B. fehlender Prompt im Hybrid-Stream).
 
 ## 8. Deployment-Hinweise
