@@ -9,7 +9,13 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import os
+import re
+import shutil
+import tempfile
+import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
@@ -45,6 +51,21 @@ CLASS_NAMES: List[str] = ["class_1", "class_2", "class_3"]  # Replace with real 
 GPT_MODEL = os.getenv("OPENAI_GPT_MODEL", "gpt-4.1-mini")
 BASE_DIR = Path(__file__).resolve().parent
 SIMPLE_UI_PATH = BASE_DIR / "static" / "index.html"
+CONFIG_UI_PATH = BASE_DIR / "static" / "config.html"
+TM_MODELS_DIR = BASE_DIR / "TM-models"
+TM_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+TM_REGISTRY_PATH = TM_MODELS_DIR / "registry.json"
+REQUIRED_TM_FILES = {"metadata.json", "model.json", "weights.bin"}
+MODEL_TYPE_ALIASES = {
+    "trichome": "trichome",
+    "trichomen": "trichome",
+    "trichomen analyse": "trichome",
+    "trichome analysis": "trichome",
+    "trichomes": "trichome",
+    "health": "health",
+    "healthcare": "health",
+    "gesundheit": "health",
+}
 
 _model: tf.keras.Model | None = None
 _client: OpenAI | None = None
@@ -53,6 +74,60 @@ _client: OpenAI | None = None
 class GPTMeta(BaseModel):
     model: str
     success: bool
+
+
+def slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "tm-model"
+
+
+def normalize_model_type(raw: str) -> str:
+    if not raw:
+        raise HTTPException(status_code=400, detail="Modeltyp fehlt.")
+    value = raw.strip().lower()
+    normalized = MODEL_TYPE_ALIASES.get(value, value)
+    if normalized not in {"trichome", "health"}:
+        raise HTTPException(status_code=400, detail="Ungültiger Modeltyp.")
+    return normalized
+
+
+def load_tm_registry() -> List[Dict[str, Any]]:
+    if TM_REGISTRY_PATH.is_file():
+        try:
+            return json.loads(TM_REGISTRY_PATH.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return []
+    return []
+
+
+def save_tm_registry(entries: List[Dict[str, Any]]) -> None:
+    TM_REGISTRY_PATH.write_text(json.dumps(entries, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def build_unique_model_dir(slug: str) -> Path:
+    candidate = TM_MODELS_DIR / slug
+    counter = 1
+    while candidate.exists():
+        candidate = TM_MODELS_DIR / f"{slug}-{counter}"
+        counter += 1
+    return candidate
+
+
+def find_model_root(temp_root: Path) -> Path:
+    if all((temp_root / required).is_file() for required in REQUIRED_TM_FILES):
+        return temp_root
+    for metadata_file in temp_root.rglob("metadata.json"):
+        candidate = metadata_file.parent
+        if all((candidate / required).is_file() for required in REQUIRED_TM_FILES):
+            return candidate
+    raise HTTPException(status_code=400, detail="ZIP enthält kein gültiges Teachable Machine Modell.")
+
+
+def list_tm_models() -> List[Dict[str, Any]]:
+    entries = load_tm_registry()
+    for entry in entries:
+        entry.setdefault("type", "trichome")
+    return entries
 
 
 def get_tf_model() -> tf.keras.Model:
@@ -180,10 +255,94 @@ def load_simple_ui() -> str:
     return "<html><body><h1>Simple UI missing</h1><p>Please build static/index.html.</p></body></html>"
 
 
+def load_config_ui() -> str:
+    """Return the HTML for the configuration interface."""
+    if CONFIG_UI_PATH.is_file():
+        return CONFIG_UI_PATH.read_text(encoding="utf-8")
+    return "<html><body><h1>Config UI missing</h1><p>Please build static/config.html.</p></body></html>"
+
+
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def root_ui() -> HTMLResponse:
     """Serve a very small HTML helper to try the API without Swagger."""
     return HTMLResponse(load_simple_ui())
+
+
+@app.get("/config", response_class=HTMLResponse, include_in_schema=False)
+async def config_ui() -> HTMLResponse:
+    """Serve a configuration helper for selecting local/self-hosted LLMs."""
+    return HTMLResponse(load_config_ui())
+
+
+@app.get("/tm-models", response_class=JSONResponse)
+async def tm_models() -> JSONResponse:
+    """Return the registered Teachable Machine models."""
+    return JSONResponse({"models": list_tm_models()})
+
+
+@app.post("/tm-models/upload")
+async def upload_tm_model(
+    file: UploadFile = File(...),
+    model_type: str = Form(...),
+    display_name: str = Form(...),
+) -> JSONResponse:
+    """Persist a zipped Teachable Machine export under TM-models."""
+
+    normalized_type = normalize_model_type(model_type)
+    if file.content_type not in {"application/zip", "application/x-zip-compressed", "multipart/form-data", "application/octet-stream"}:
+        # Some browsers mislabel the upload, therefore we only warn if it's obviously not a zip.
+        if not file.filename.endswith(".zip"):
+            raise HTTPException(status_code=400, detail="Bitte eine ZIP-Datei hochladen.")
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Leere Datei erhalten.")
+
+    if not display_name or not display_name.strip():
+        display_name = file.filename.rsplit(".", 1)[0] or "TM Modell"
+
+    metadata_data: Dict[str, Any] | None = None
+    target_dir: Path | None = None
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive, tempfile.TemporaryDirectory() as tmp_dir:
+            archive.extractall(tmp_dir)
+            temp_root = Path(tmp_dir)
+            content_root = find_model_root(temp_root)
+            missing = [req for req in REQUIRED_TM_FILES if not (content_root / req).is_file()]
+            if missing:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Datei unvollständig. Folgende Bestandteile fehlen: {', '.join(missing)}.",
+                )
+
+            metadata_raw = (content_root / "metadata.json").read_text(encoding="utf-8")
+            try:
+                metadata_data = json.loads(metadata_raw)
+            except json.JSONDecodeError as exc:  # pragma: no cover - depends on uploads
+                raise HTTPException(status_code=400, detail="metadata.json ist nicht gültig JSON.") from exc
+            slug = slugify(display_name)
+            target_dir = build_unique_model_dir(slug)
+            shutil.copytree(content_root, target_dir)
+    except zipfile.BadZipFile as exc:  # pragma: no cover - depends on user uploads
+        raise HTTPException(status_code=400, detail="Ungültige ZIP-Datei.") from exc
+
+    if not metadata_data or target_dir is None:
+        raise HTTPException(status_code=500, detail="Modell konnte nicht gespeichert werden.")
+
+    registry = load_tm_registry()
+    entry = {
+        "id": target_dir.name,
+        "name": display_name,
+        "type": normalized_type,
+        "path": str(target_dir.relative_to(BASE_DIR)),
+        "metadata": metadata_data,
+        "added": datetime.utcnow().isoformat() + "Z",
+    }
+    registry.append(entry)
+    save_tm_registry(registry)
+
+    return JSONResponse({"message": "Modell gespeichert", "model": entry})
 
 
 @app.post("/analyze")

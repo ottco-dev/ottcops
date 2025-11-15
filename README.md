@@ -1,126 +1,73 @@
-# CALYX.IO OpenCore Component
+# OTTCOUTURE Cannabis Vision OpenCore
 
-Dies ist unsere erste OpenCore-Komponente für das CALYX.IO Projekt. Sie verbindet
-ein Teachable-Machine-Modell mit GPT und erlaubt der Community, die Pipeline lokal
-zu testen, zu erweitern und eigene Modelle einzubinden.
+OTTCOPS ist unser OpenCore-Playground für nerdige Cannabis Vision Flows, geboren bei [ottcouture.eu](https://ottcouture.eu) und veröffentlicht unter der AGPL. Wir mischen Teachable-Machine-Signale mit multimodalen LLMs, streamen rohe JSON-Outputs und behalten sämtliche Brand-Rechte bei OTTCOUTURE. Credits & Feedback bitte an **otcdmin@outlook.com** oder im Discord [`discord.gg/GMMSqePfPh`](https://discord.gg/GMMSqePfPh).
 
-## Features
-- ✅ TensorFlow/Keras model loading from `./models/teachable_model` (override via
-  `TEACHABLE_MODEL_PATH`).
-- ✅ Swagger UI at [`/docs`](http://localhost:8000/docs) and ReDoc at `/redoc`.
-- ✅ Simple HTML UI (GET `/`) that sends multipart requests to `/analyze` without leaving
-the browser.
-- ✅ Pydantic-powered responses plus structured error handling for missing files,
-  TensorFlow issues, and OpenAI failures.
+## Feature Highlights
+- 🌿 **FastAPI Core** mit `/analyze`, `/docs`, `/config` und den neuen `/tm-models*`-Routen.
+- 🧠 **Vision LLM Switchboard**: OpenAI, Ollama oder LM Studio lassen sich live am `/config`-Frontend umstellen.
+- 🧪 **Cannabis-Systemprompts & Lightweight-Modelle** für Trichome-Heatmaps, Terpen-Stacks und Glitch-Hunts.
+- 📦 **Teachable-Machine-Depot**: ZIP-Uploads (metadata.json, model.json, weights.bin) landen versioniert unter `/TM-models` und werden typisiert (Trichomen vs. Health).
+- 🛡️ **Brand Messaging** auf jeder Seite – ottcouture.eu Rechte, Kontaktwege, Discord-CTA.
 
-## Installation
+## Installation im OTTCOUTURE Style
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-## Configuration
-| Variable | Required | Default | Description |
-| --- | --- | --- | --- |
-| `OPENAI_API_KEY` | ✅ | – | OpenAI API key with access to the selected GPT model. |
-| `OPENAI_GPT_MODEL` | Optional | `gpt-4.1-mini` | Override the multimodal GPT model id. |
-| `TEACHABLE_MODEL_PATH` | Optional | `./models/teachable_model` | Folder that contains the exported Teachable Machine SavedModel/Keras bundle. |
+# optional wenn du GPT Calls willst
+export OPENAI_API_KEY="sk-..."
 
-> ⚠️ The TensorFlow model directory must include the Teachable Machine labels. When you
-> export a model, Teachable Machine writes a `labels.txt`; read it at boot and update
-> the `CLASS_NAMES` list accordingly.
-
-## Running the API
-```bash
-export OPENAI_API_KEY="sk-..."  # Required
+# Dev-Server starten
 uvicorn app:app --reload
 ```
-Visit:
-- `http://localhost:8000/docs` for Swagger UI
-- `http://localhost:8000/` for the minimal HTML client
 
-## Project Layout
+1. Analyzer UI: `http://localhost:8000/`
+2. Config Hub inkl. TM-Depot: `http://localhost:8000/config`
+3. Discord Crew & Support: [`discord.gg/GMMSqePfPh`](https://discord.gg/GMMSqePfPh)
+
+## Konfiguration
+| Variable | Pflicht | Default | Beschreibung |
+| --- | --- | --- | --- |
+| `OPENAI_API_KEY` | bei OpenAI Flow | – | Key für GPT-4.1 mini oder dein bevorzugtes Vision Modell. |
+| `OPENAI_GPT_MODEL` | optional | `gpt-4.1-mini` | LLM-ID für Cloud Vision. |
+| `TEACHABLE_MODEL_PATH` | optional | `./models/teachable_model` | Alternativer Pfad zu einem Legacy-Teachable-Model. |
+
+Alle UI-Einstellungen landen im Browser (`localStorage.cannabisLLMConfig`). Für Self-Hosted Vision-LLMs (Ollama/LM Studio) kannst du Base URL, Model, Keys und unsere Cannabis-Systemprompts direkt übernehmen.
+
+## Teachable Machine Depot (`/TM-models`)
+1. Exportiere dein Google Teachable-Machine-Projekt als **TensorFlow** Paket (es enthält `metadata.json`, `model.json`, `weights.bin`).
+2. Öffne `http://localhost:8000/config`, scrolle zum Abschnitt „OTTCOUTURE Teachable Machine Depot“.
+3. Gib einen Modellnamen an, wähle den Typ:
+   - `Trichomen Analyse` für Reifegrad/Qualitäts-Modelle.
+   - `Health & Leaf Safety` für Symptom- oder Schadens-Detektoren.
+4. Lade die ZIP-Datei hoch. Das Backend extrahiert sie nach `/TM-models/<slug>` und ergänzt `TM-models/registry.json`.
+5. Zwei Starter-Slots liegen bereit: du kannst eigene Basismodelle im Repo-Verzeichnis `TM-models/` ablegen und mit dem Upload-Flow überschreiben.
+
+> Wichtig: Jede ZIP muss mindestens `metadata.json`, `model.json` und `weights.bin` enthalten. Fehlende Dateien blocken wir bewusst, damit die Community nur valide Assets sieht.
+
+## API Routen
+- `GET /` – Analyzer Landing Page (brandet, Cannabis-Formular)
+- `GET /config` – Self-Host Konfigurator & TM-Depot
+- `POST /analyze` – Image + Prompt → TM Klassifikation + GPT Antwort
+- `GET /tm-models` – Liefert registrierte TM-Modelle samt Metadaten
+- `POST /tm-models/upload` – Erwartet `file`, `model_type`, `display_name`
+
+## Projektstruktur
 ```
 .
-├── app.py              # FastAPI service
-├── requirements.txt    # Runtime dependencies
-├── README.md           # Quickstart
-├── DOKU.md             # Detailed German documentation
+├── app.py                # FastAPI Service + TM Depot Uploads
 ├── static/
-│   └── index.html      # Simple browser UI
-└── models/
-    └── teachable_model # (Not tracked) place your exported Teachable Machine model
+│   ├── index.html        # Analyzer UI (OTTCOUTURE Style)
+│   └── config.html       # Self-Host + TM Depot Oberfläche
+├── TM-models/            # Versionierte Teachable Machine Bundles (ZIP-Uploads)
+│   └── README.md         # Hinweise & Slots für Startermodelle
+├── requirements.txt
+├── README.md
+└── LICENSE
 ```
 
-## API Contract
-```
-POST /analyze (multipart/form-data)
-  - image: UploadFile
-  - prompt: string
-Response 200
-{
-  "classification": {
-    "top_label": "class_1",
-    "top_confidence": 0.97,
-    "all_predictions": [
-      {"label": "class_1", "confidence": 0.97},
-      {"label": "class_2", "confidence": 0.02}
-    ]
-  },
-  "gpt_response": "...",
-  "meta": {"model": "gpt-4.1-mini", "success": true}
-}
-```
-
-## Local Testing Without GPT
-
-## Eigene Modelle trainieren
-
-### 1. Datensätze erfassen und labeln
-* Nutzt [Label Studio](https://labelstud.io/) oder ein anderes Open-Source-Tool.
-* Für Trichome-Analysen empfehlen wir mindestens zwei Klassen, z. B. `reif`
-  und `unreif`. Für Mangel-Erkennung können Kategorien wie `Stickstoffmangel`,
-  `Calciummangel` und `gesund` hilfreich sein.
-* Beim Labeln in Label Studio:
-  - Verwendet hochauflösende Bilder, zoomt auf relevante Bildbereiche und setzt die
-    Bounding Boxes knapp um die sichtbaren Trichome oder Symptome.
-  - Achtet darauf, dass jedes Bild nur die passende Kategorie erhält. Im Zweifel
-    ein zusätzliches Label `unsicher` anlegen, das später aus dem Trainingssatz
-    gefiltert werden kann.
-  - Dokumentiert Beispielbilder pro Klasse im Projekt, damit Team-Mitglieder
-    konsistent labeln.
-
-### 2. Daten exportieren
-1. Export aus Label Studio als „YOLO“ oder „COCO“ Dataset.
-2. Nutzt `label-studio-converter` oder `roboflow` nur, wenn ihr Metadaten benötigt.
-
-### 3. Modell in Teachable Machine trainieren
-1. Öffnet [Teachable Machine](https://teachablemachine.withgoogle.com/).
-2. Importiert die gelabelten Bilder pro Klasse.
-3. Für Trichom-Erkennung empfiehlt sich „Image Project“ → „Standard Image Model“. Für
-   Mangel-Klassifikation könnt ihr das gleiche Template nutzen.
-4. Startet das Training mit Standardparametern, testet direkt im Browser und exportiert
-   anschließend als TensorFlow Keras.
-
-### 4. Modell in CALYX.IO einbinden
-1. Speichert den Export unter `./models/teachable_model` oder setzt
-   `TEACHABLE_MODEL_PATH` auf euer Verzeichnis.
-2. Aktualisiert die `labels.txt` entsprechend eurer Klassen.
-3. Startet den Dienst (siehe "Running the API") und prüft eure Klasse im Web-UI.
-
-### 5. Qualität sichern
-* Nutzt ein dediziertes Validation-Set (mindestens 20 % der Daten).
-* Vergleicht Predictions mit bekannten Beispielen und passt Labels an, wenn die
-  Fehlklassifizierung auf inkonsistente Annotationen zurückgeht.
-* Dokumentiert jede Iteration in DOKU.md oder einem separaten CHANGELOG, um das
-  OpenCore-Prinzip transparent zu halten.
-Set `OPENAI_API_KEY=dummy` and mock the OpenAI client (e.g., monkeypatch
-`call_gpt_with_image_context`). TensorFlow predictions can be validated with sample
-images via Swagger UI or the HTML form.
-
-## License & Usage Rights
-This project is released under the [GNU Affero General Public License v3.0](LICENSE).
-OTTCOUTURE retains all rights to the OTTCOUTURE branding, and every modification or
-derivative must remain open source, be distributed under the same AGPL terms, and
-include clear attribution to OTTCOUTURE.
+## Feedback & Rechte
+- Brand & Rechte: **ottcouture.eu** – wir veröffentlichen hier bewusst OpenCore, aber behalten sämtliche Markenrechte.
+- Feedback: **otcdmin@outlook.com**, Instagram **@ottcouture.eu**, Discord [`discord.gg/GMMSqePfPh`](https://discord.gg/GMMSqePfPh).
+- Lizenz: [AGPL-3.0](LICENSE). Bitte alle Forks/Deployments wieder zur Community spiegeln und Credits lassen.
