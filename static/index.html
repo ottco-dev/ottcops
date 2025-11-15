@@ -242,6 +242,71 @@
     <script>
       const form = document.getElementById("analyze-form");
       const result = document.getElementById("result");
+      const modelSelect = document.getElementById("model-select");
+      const modelStatus = document.getElementById("model-status");
+
+      async function loadModels() {
+        if (!modelSelect) return;
+        modelSelect.disabled = true;
+        modelSelect.innerHTML = "<option>Modelle werden geladen …</option>";
+        let enableSelect = true;
+        try {
+          const response = await fetch("/tm-models");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const payload = await response.json();
+          const models = payload.models || [];
+          const hasBuiltin = payload.has_builtin;
+          const defaultId = payload.default_model_id;
+          modelSelect.innerHTML = "";
+          let selection = "";
+          if (models.length === 0 && !hasBuiltin) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "Kein Modell verfügbar – bitte im Config-Bereich hochladen.";
+            option.disabled = true;
+            modelSelect.appendChild(option);
+            if (modelStatus)
+              modelStatus.textContent =
+                "Bitte mindestens ein Teachable-Machine-Modell im /config Bereich installieren.";
+            enableSelect = false;
+          } else {
+            if (hasBuiltin) {
+              const option = document.createElement("option");
+              option.value = "builtin";
+              option.textContent = "OPENCORE Referenz (TEACHABLE_MODEL_PATH)";
+              modelSelect.appendChild(option);
+              selection = "builtin";
+            }
+            models.forEach((model) => {
+              const option = document.createElement("option");
+              option.value = model.id;
+              option.textContent = `${model.name} (${model.type === "health" ? "Health" : "Trichome"})`;
+              modelSelect.appendChild(option);
+            });
+            if (defaultId && models.some((model) => model.id === defaultId)) {
+              selection = defaultId;
+            } else if (models.length) {
+              selection = selection || models[0].id;
+            }
+            if (selection) {
+              modelSelect.value = selection;
+            }
+            if (modelStatus) {
+              modelStatus.textContent =
+                "Die Auswahl bestimmt, welches Teachable-Machine-Paket für die Analyse geladen wird.";
+            }
+          }
+        } catch (error) {
+          enableSelect = false;
+          if (modelStatus) modelStatus.textContent = "Modelle konnten nicht geladen werden.";
+          console.error("Model load", error);
+        } finally {
+          modelSelect.disabled = !enableSelect;
+        }
+      }
+
+      loadModels();
+
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
         result.textContent = JSON.stringify(
@@ -262,6 +327,9 @@
         const formData = new FormData();
         formData.append("prompt", prompt);
         formData.append("image", image);
+        if (modelSelect && modelSelect.value) {
+          formData.append("model_id", modelSelect.value);
+        }
         try {
           const response = await fetch("/analyze", {
             method: "POST",

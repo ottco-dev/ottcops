@@ -8,6 +8,7 @@ Required dependencies:
 from __future__ import annotations
 
 import base64
+import contextlib
 import io
 import json
 import os
@@ -17,7 +18,7 @@ import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -34,6 +35,12 @@ except ImportError as exc:  # pragma: no cover - only triggered when TF missing
 
 from openai import OpenAI
 
+try:  # pragma: no cover - optional dependency for network mode
+    from zeroconf import ServiceInfo, Zeroconf
+except ImportError:  # pragma: no cover - handled at runtime when needed
+    ServiceInfo = None  # type: ignore
+    Zeroconf = None  # type: ignore
+
 app = FastAPI(
     title="Teachable Machine + GPT Analyzer",
     description=(
@@ -47,7 +54,7 @@ app = FastAPI(
 )
 
 MODEL_PATH = os.getenv("TEACHABLE_MODEL_PATH", "./models/teachable_model")
-CLASS_NAMES: List[str] = ["class_1", "class_2", "class_3"]  # Replace with real labels from Teachable Machine.
+DEFAULT_CLASS_NAMES: List[str] = ["class_1", "class_2", "class_3"]
 GPT_MODEL = os.getenv("OPENAI_GPT_MODEL", "gpt-4.1-mini")
 BASE_DIR = Path(__file__).resolve().parent
 SIMPLE_UI_PATH = BASE_DIR / "static" / "index.html"
@@ -69,7 +76,157 @@ MODEL_TYPE_ALIASES = {
 
 _model: tf.keras.Model | None = None
 _client: OpenAI | None = None
+_network_zeroconf: Zeroconf | None = None
+_network_service: ServiceInfo | None = None
+_network_runtime_config: Dict[str, Any] = {}
+_app_settings: Dict[str, Any] = {}
 
+
+logger = logging.getLogger(__name__)
+
+
+class NetworkPayload(BaseModel):
+    hostname: str
+    port: int = 8000
+
+
+class CompletionPayload(BaseModel):
+    prompt: str
+
+
+def load_app_settings() -> Dict[str, Any]:
+    if SETTINGS_PATH.is_file():
+        try:
+            data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+            return {"default_model_id": data.get("default_model_id")}
+        except json.JSONDecodeError:
+            logger.warning("app-settings.json konnte nicht geparst werden, fallback auf Defaults.")
+    return {"default_model_id": None}
+
+
+def save_app_settings(data: Dict[str, Any]) -> None:
+    SETTINGS_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def load_network_config_from_disk() -> Dict[str, Any]:
+    if NETWORK_CONFIG_PATH.is_file():
+        try:
+            data = json.loads(NETWORK_CONFIG_PATH.read_text(encoding="utf-8"))
+            merged = {**NETWORK_DEFAULT_CONFIG, **data}
+            return merged
+        except json.JSONDecodeError:
+            logger.warning("network-config.json konnte nicht geparst werden, fallback auf Defaults.")
+    return dict(NETWORK_DEFAULT_CONFIG)
+
+
+def save_network_config(data: Dict[str, Any]) -> None:
+    NETWORK_CONFIG_PATH.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def determine_local_ip() -> str:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.connect(("8.8.8.8", 80))
+        return sock.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        sock.close()
+
+
+def sanitize_hostname(raw: str) -> str:
+    if not raw:
+        raise ValueError("Hostname darf nicht leer sein.")
+    slug = re.sub(r"[^a-z0-9-]+", "-", raw.strip().lower()).strip("-")
+    if not slug:
+        slug = "ottcolab"
+    if not slug.endswith(".local"):
+        slug = f"{slug}.local"
+    return slug
+
+
+def require_zeroconf() -> None:
+    if Zeroconf is None or ServiceInfo is None:
+        raise RuntimeError(
+            "Für den WiFi Broadcast muss das Python-Paket 'zeroconf' installiert sein. "
+            "Installiere es via 'pip install zeroconf'."
+        )
+
+
+def deactivate_network_broadcast() -> None:
+    global _network_zeroconf, _network_service
+    if _network_zeroconf and _network_service:
+        with contextlib.suppress(Exception):
+            _network_zeroconf.unregister_service(_network_service)
+        with contextlib.suppress(Exception):
+            _network_zeroconf.close()
+    _network_zeroconf = None
+    _network_service = None
+
+
+def activate_network_broadcast(hostname: str, port: int) -> Dict[str, Any]:
+    require_zeroconf()
+    if not (1 <= port <= 65535):
+        raise ValueError("Port muss zwischen 1 und 65535 liegen.")
+    sanitized = sanitize_hostname(hostname)
+    ip_address = determine_local_ip()
+    address_bytes = socket.inet_aton(ip_address)
+
+    deactivate_network_broadcast()
+    zeroconf_instance = Zeroconf()
+    service_name = sanitized.replace(".local", "")
+    service_info = ServiceInfo(
+        "_http._tcp.local.",
+        f"{service_name}._http._tcp.local.",
+        addresses=[address_bytes],
+        port=port,
+        properties={"path": "/", "brand": "ottcouture.eu"},
+    )
+    zeroconf_instance.register_service(service_info)
+
+    global _network_zeroconf, _network_service
+    _network_zeroconf = zeroconf_instance
+    _network_service = service_info
+
+    return {
+        "enabled": True,
+        "hostname": sanitized,
+        "port": port,
+        "ip": ip_address,
+        "url": f"http://{sanitized}:{port}",
+    }
+
+
+def get_network_status() -> Dict[str, Any]:
+    return {
+        "enabled": _network_runtime_config.get("enabled", False),
+        "hostname": _network_runtime_config.get("hostname", NETWORK_DEFAULT_CONFIG["hostname"]),
+        "port": _network_runtime_config.get("port", NETWORK_DEFAULT_CONFIG["port"]),
+        "ip": _network_runtime_config.get("ip"),
+        "url": _network_runtime_config.get("url"),
+    }
+
+
+def enable_network_mode(hostname: str, port: int) -> Dict[str, Any]:
+    state = activate_network_broadcast(hostname, port)
+    _network_runtime_config.update(state)
+    save_network_config(_network_runtime_config)
+    return get_network_status()
+
+
+def disable_network_mode() -> Dict[str, Any]:
+    deactivate_network_broadcast()
+    _network_runtime_config.update(
+        {"enabled": False, "ip": None, "url": None}
+    )
+    save_network_config(_network_runtime_config)
+    return get_network_status()
+
+
+_network_runtime_config = load_network_config_from_disk()
+_app_settings = load_app_settings()
 
 class GPTMeta(BaseModel):
     model: str
@@ -163,10 +320,66 @@ def preprocess_image(image_bytes: bytes, input_shape: Sequence[int]) -> np.ndarr
     return image_array
 
 
-def classify_image(image_bytes: bytes) -> Dict[str, Any]:
+def resolve_model_entry(model_id: str | None = None) -> Dict[str, Any]:
+    registry = load_tm_registry()
+    candidate: Optional[Dict[str, Any]] = None
+    force_builtin = model_id == "builtin"
+    if model_id and not force_builtin:
+        candidate = next((entry for entry in registry if entry.get("id") == model_id), None)
+        if candidate is None:
+            raise HTTPException(status_code=404, detail="Unbekanntes Teachable Machine Modell.")
+    elif not force_builtin:
+        default_id = _app_settings.get("default_model_id")
+        if default_id:
+            candidate = next((entry for entry in registry if entry.get("id") == default_id), None)
+    if candidate is None and registry and not force_builtin:
+        candidate = registry[0]
+
+    if candidate:
+        model_path = (BASE_DIR / candidate["path"]).resolve()
+        if not model_path.is_dir():
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Der Modellordner '{candidate['path']}' fehlt. Bitte das ZIP erneut hochladen oder den Pfad korrigieren."
+                ),
+            )
+        labels = candidate.get("metadata", {}).get("labels") if isinstance(candidate.get("metadata"), dict) else None
+        if not isinstance(labels, list) or not labels:
+            labels = DEFAULT_CLASS_NAMES
+        else:
+            labels = [str(label) for label in labels]
+        return {
+            "id": candidate.get("id"),
+            "name": candidate.get("name", "TM Modell"),
+            "type": candidate.get("type", "trichome"),
+            "path": model_path,
+            "labels": labels,
+            "source": "registry",
+        }
+
+    model_path = Path(MODEL_PATH)
+    if not model_path.is_dir():
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Kein Teachable Machine Modell gefunden. Bitte ein ZIP im Config-Bereich hochladen oder TEACHABLE_MODEL_PATH setzen."
+            ),
+        )
+    return {
+        "id": "builtin",
+        "name": "OPENCORE Referenz",
+        "type": "trichome",
+        "path": model_path.resolve(),
+        "labels": DEFAULT_CLASS_NAMES,
+        "source": "builtin",
+    }
+
+
+def classify_image(image_bytes: bytes, model_entry: Dict[str, Any]) -> Dict[str, Any]:
     """Run the Teachable Machine model on the provided image bytes."""
     try:
-        model = get_tf_model()
+        model = load_tf_model(model_entry["path"])
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -177,15 +390,16 @@ def classify_image(image_bytes: bytes) -> Dict[str, Any]:
     predictions = model.predict(preprocessed, verbose=0)[0]
     predictions = predictions.tolist()
 
-    if len(predictions) != len(CLASS_NAMES):
-        raise HTTPException(
-            status_code=500,
-            detail="Model output size does not match number of class labels.",
-        )
+    class_names = list(model_entry.get("labels", DEFAULT_CLASS_NAMES))
+    if len(class_names) != len(predictions):
+        adjusted = class_names[: len(predictions)]
+        while len(adjusted) < len(predictions):
+            adjusted.append(f"class_{len(adjusted) + 1}")
+        class_names = adjusted
 
     labelled_predictions = [
         {"label": label, "confidence": float(conf)}
-        for label, conf in zip(CLASS_NAMES, predictions)
+        for label, conf in zip(class_names, predictions)
     ]
     labelled_predictions.sort(key=lambda x: x["confidence"], reverse=True)
     top_prediction = labelled_predictions[0]
@@ -346,7 +560,9 @@ async def upload_tm_model(
 
 
 @app.post("/analyze")
-async def analyze(image: UploadFile = File(...), prompt: str = Form(...)) -> JSONResponse:
+async def analyze(
+    image: UploadFile = File(...), prompt: str = Form(...), model_id: Optional[str] = Form(default=None)
+) -> JSONResponse:
     """Endpoint that classifies an image and enriches the result with GPT."""
     if image is None:
         raise HTTPException(status_code=400, detail="Image file is required.")
@@ -358,15 +574,48 @@ async def analyze(image: UploadFile = File(...), prompt: str = Form(...)) -> JSO
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Failed to read uploaded image: {exc}") from exc
 
-    classification = classify_image(image_bytes)
+    model_entry = resolve_model_entry(model_id)
+    classification = classify_image(image_bytes, model_entry)
     gpt_response = call_gpt_with_image_context(prompt, classification, image_bytes)
 
     result = {
         "classification": classification,
         "gpt_response": gpt_response,
         "meta": GPTMeta(model=GPT_MODEL, success=True).dict(),
+        "teachable_model": {
+            "id": model_entry.get("id"),
+            "name": model_entry.get("name"),
+            "type": model_entry.get("type"),
+            "source": model_entry.get("source"),
+        },
     }
     return JSONResponse(content=result)
+
+
+OTTO_SYSTEM_PROMPT = (
+    "Du bist OTTO, der Cultivation-Chatbot von ottcouture.eu. Beantworte Fragen zu Grow-Setups, "
+    "Klima, Genetik und Betriebssicherheit sachlich, strukturiert und ohne medizinische Aussagen. "
+    "Liefere klare Handlungsschritte und fasse Werte präzise zusammen."
+)
+
+
+@app.post("/api/completions", response_class=JSONResponse)
+async def otto_completion(payload: CompletionPayload) -> JSONResponse:
+    if not payload.prompt.strip():
+        raise HTTPException(status_code=400, detail="Prompt darf nicht leer sein.")
+    client = get_openai_client()
+    try:
+        response = client.chat.completions.create(
+            model=GPT_MODEL,
+            messages=[
+                {"role": "system", "content": OTTO_SYSTEM_PROMPT},
+                {"role": "user", "content": payload.prompt.strip()},
+            ],
+        )
+    except Exception as exc:  # pragma: no cover - external service errors
+        raise HTTPException(status_code=502, detail=f"OpenAI API error: {exc}") from exc
+    answer = response.choices[0].message.content.strip()
+    return JSONResponse({"response": answer, "model": GPT_MODEL})
 
 
 if __name__ == "__main__":
