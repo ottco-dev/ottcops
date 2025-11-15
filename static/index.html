@@ -167,6 +167,16 @@
   <body>
     <header>
       <p style="text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.85rem; color: var(--accent)">
+        OTTCOUTURE.EU · OPENCORE
+      </p>
+      <h1>OPENCORE Analyzer</h1>
+      <p>
+        Der Analyzer kombiniert deine Uploads mit unserem offenen Community-Modell „OPENCORE“ und liefert strukturierte JSON
+        Ergebnisse für Cannabis-Analysen.
+      </p>
+      <p>
+        Alle Rechte liegen bei <strong>ottcouture.eu</strong>. Kontakt & Support: <strong>otcdmin@outlook.com</strong>,
+        Instagram <strong>@ottcouture.eu</strong> oder Discord
         OTTCOUTURE.EU · RAW OPS
       </p>
       <h1>OTTCOPS Signal Lab</h1>
@@ -183,6 +193,8 @@
         .
       </p>
       <div class="actions">
+        <a class="primary" href="/config">Konfiguration &amp; TM Depot</a>
+        <a class="secondary" href="/completions">OTTO Grow-Chat</a>
         <a class="primary" href="/config">Self-Host &amp; Prompt Config</a>
         <a class="secondary" href="https://ottcouture.eu" target="_blank" rel="noopener">ottcouture.eu</a>
         <a class="secondary" href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener"
@@ -195,6 +207,18 @@
       <section class="card">
         <h2>Signal Input</h2>
         <p class="disclaimer">
+          Beschreibe kurz, welche Auswertung du brauchst. Wir leiten Bild und Prompt an das ausgewählte OPENCORE- oder
+          Community-Modell weiter und liefern eine sachliche JSON-Antwort.
+        </p>
+        <form id="analyze-form">
+          <label>
+            Teachable-Machine-Modell
+            <select id="model-select">
+              <option value="">Modelle werden geladen …</option>
+            </select>
+            <small id="model-status">Wir übernehmen automatisch das Standardmodell aus dem Konfigurator.</small>
+          </label>
+          <label>
           Schreib knackige Specs (z. B. Trichome-Scan, Resin-Map, Leaf-Health). Wir senden Prompt + Bild an dein
           aktives LLM Setup.
         </p>
@@ -212,6 +236,11 @@
       </section>
 
       <section class="card">
+        <h2>Analyse-Output</h2>
+        <p class="disclaimer">Der Analyzer liefert unveränderte JSON-Daten direkt aus dem Backend.</p>
+        <pre id="result">{
+  "status": "bereit",
+  "hinweis": "Bitte Modell, Prompt und Bild wählen."
         <h2>Raw JSON Output</h2>
         <p class="disclaimer">Keine Story, keine Medizin. Wir dumpen die Response exakt so raus, wie das Backend liefert.</p>
         <pre id="result">{
@@ -223,6 +252,10 @@
       <section class="card">
         <h2>README + Support</h2>
         <p class="disclaimer">
+          OPENCORE ist unser Open-Source-Community-Modell für Cannabis-Vision. Die Kombination aus Teachable Machine und
+          LLM-Analyse bleibt vollständig bei OTTCOUTURE gebrandet. Feedback oder neue Modelle gern an
+          <strong>otcdmin@outlook.com</strong>, Instagram <strong>@ottcouture.eu</strong> oder Discord
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">GMMSqePfPh</a>.
           OTTCOPS = OTTCOUTURE OpenCore Playground. Mix Teachable Machine Klassifikationen mit Vision-LLMs, bau
           eigene Pipelines oder hack die Config Seite für Self-Hosted Modelle. Wenn du uns supporten willst oder
           Modelle droppen magst: mail <strong>otcdmin@outlook.com</strong>, Insta <strong>@ottcouture.eu</strong>,
@@ -233,6 +266,9 @@
 
     <footer>
       <p>
+        © <strong>OTTCOUTURE</strong> — Enterprise Tooling & OpenCore Community Model „OPENCORE“. Rechte: ottcouture.eu ·
+        Support via <a href="mailto:otcdmin@outlook.com">otcdmin@outlook.com</a>, Instagram <strong>@ottcouture.eu</strong>
+        oder Discord <strong>discord.gg/GMMSqePfPh</strong>.
         © <strong>OTTCOUTURE OpenCore</strong> — Alle Rechte liegen bei <strong>ottcouture.eu</strong>. Support &
         Feedback: <a href="mailto:otcdmin@outlook.com">otcdmin@outlook.com</a>, Insta <strong>@ottcouture.eu</strong>,
         Discord <strong>discord.gg/GMMSqePfPh</strong>.
