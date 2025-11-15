@@ -97,7 +97,7 @@ STREAM_CAPTURE_INTERVAL_DEFAULT = 5.0
 STREAM_BATCH_INTERVAL_DEFAULT = 30.0
 STREAM_BUFFER_MAX = 24
 
-_model_cache: Dict[str, tf.keras.Model] = {}
+_model_cache: Dict[str, Any] = {}
 _client: OpenAI | None = None
 _network_zeroconf: Zeroconf | None = None
 _network_service: ServiceInfo | None = None
@@ -817,6 +817,18 @@ def disable_network_mode() -> Dict[str, Any]:
 _network_runtime_config = load_network_config_from_disk()
 _app_settings = load_app_settings()
 
+
+def prime_default_teachable_model() -> None:
+    """Warm the default model once during startup for faster ML-only calls."""
+
+    try:
+        entry = resolve_model_entry(_app_settings.get("default_model_id"))
+        ensure_model_ready(entry)
+    except HTTPException as exc:
+        logger.info("Kein Default-Modell zum Vorwärmen verfügbar: %s", exc.detail)
+    except Exception as exc:  # pragma: no cover - depends on filesystem state
+        logger.warning("Default-Modell konnte nicht vorgewärmt werden: %s", exc)
+
 class GPTMeta(BaseModel):
     model: str
     success: bool
@@ -900,15 +912,60 @@ def set_default_tm_model(model_id: str | None) -> Optional[Dict[str, Any]]:
     return entry
 
 
-def load_tf_model(model_path: Path) -> tf.keras.Model:
-    """Load and cache a Teachable Machine TensorFlow model."""
+class SavedModelWrapper:
+    """Thin wrapper that exposes predict() for TensorFlow SavedModels."""
+
+    def __init__(self, model_path: Path) -> None:
+        imported = tf.saved_model.load(str(model_path))
+        signature = imported.signatures.get("serving_default")
+        if signature is None and imported.signatures:
+            # Fall back to the first available signature if serving_default is missing.
+            signature = next(iter(imported.signatures.values()))
+        if signature is None:
+            raise RuntimeError("SavedModel enthält keinen validen serving_default-Endpunkt.")
+        self._signature = signature
+        _, kwargs = signature.structured_input_signature
+        if not kwargs:
+            raise RuntimeError("SavedModel Eingabesignatur ist leer.")
+        self._input_spec = next(iter(kwargs.values()))
+        self.input_shape = tuple(self._input_spec.shape)
+        self.dtype = self._input_spec.dtype or tf.float32
+
+    def predict(self, batch: np.ndarray, verbose: int = 0) -> np.ndarray:
+        tensor = tf.convert_to_tensor(batch, dtype=self.dtype)
+        outputs = self._signature(tensor)
+        if isinstance(outputs, dict):
+            first = next(iter(outputs.values()))
+        else:
+            first = outputs
+        return first.numpy()
+
+
+def load_tf_model(model_path: Path) -> Any:
+    """Load and cache Teachable Machine models across formats."""
+
     resolved = str(model_path.resolve())
     model = _model_cache.get(resolved)
-    if model is None:
-        if not model_path.is_dir():
-            raise RuntimeError(f"Model directory '{model_path}' not found.")
+    if model is not None:
+        return model
+    if not model_path.exists():
+        raise RuntimeError(f"Model directory '{model_path}' not found.")
+
+    if model_path.is_file():
+        suffix = model_path.suffix.lower()
+        if suffix not in {".keras", ".h5"}:
+            raise RuntimeError(
+                "Unbekanntes Modellformat. Bitte ein .keras oder .h5 Modell bereitstellen oder ein SavedModel-Verzeichnis nutzen."
+            )
         model = tf.keras.models.load_model(model_path)
-        _model_cache[resolved] = model
+    elif (model_path / "saved_model.pb").is_file():
+        model = SavedModelWrapper(model_path)
+    else:
+        raise RuntimeError(
+            "Modellordner enthält kein unterstütztes Format (.keras/.h5 oder SavedModel)."
+        )
+    _model_cache[resolved] = model
+    logger.info("Teachable Machine Modell geladen: %s", resolved)
     return model
 
 
@@ -928,11 +985,63 @@ def preprocess_image(image_bytes: bytes, input_shape: Sequence[int]) -> np.ndarr
     image = Image.open(image_stream).convert("RGB")
     if len(input_shape) < 3:
         raise HTTPException(status_code=500, detail="Unexpected model input shape.")
-    height, width = int(input_shape[1]), int(input_shape[2])
+    height = int(input_shape[1] or 224)
+    width = int(input_shape[2] or 224)
     image = image.resize((width, height))
     image_array = np.asarray(image).astype("float32") / 255.0  # Normalize to [0, 1]
     image_array = np.expand_dims(image_array, axis=0)  # Batch dimension
     return image_array
+
+
+def extract_input_shape(model: Any) -> Sequence[int]:
+    """Return a normalized input shape tuple for the loaded model."""
+
+    input_shape = getattr(model, "input_shape", None)
+    if isinstance(input_shape, list):
+        input_shape = input_shape[0]
+    if hasattr(input_shape, "as_list"):
+        input_shape = tuple(input_shape.as_list())
+    if isinstance(input_shape, tuple):
+        return input_shape
+    raise HTTPException(status_code=500, detail="Modell liefert keine Input-Shape zurück.")
+
+
+def warmup_teachable_model(model: Any, model_entry: Dict[str, Any]) -> None:
+    """Run a dummy inference once so the model is initialized."""
+
+    if getattr(model, "_opencore_warmed", False):
+        return
+    try:
+        input_shape = extract_input_shape(model)
+        if len(input_shape) < 4:
+            return
+        height = int(input_shape[1] or 224)
+        width = int(input_shape[2] or 224)
+        channels = int(input_shape[3] or 3)
+        dummy = np.zeros((1, height, width, channels), dtype="float32")
+        model.predict(dummy, verbose=0)
+        setattr(model, "_opencore_warmed", True)
+        logger.info(
+            "ML-Modell '%s' initialisiert (%sx%s, %s Kanäle).",
+            model_entry.get("name"),
+            height,
+            width,
+            channels,
+        )
+    except Exception as exc:  # pragma: no cover - depends on model internals
+        logger.warning(
+            "Warmup für Modell %s fehlgeschlagen: %s",
+            model_entry.get("name"),
+            exc,
+        )
+
+
+def ensure_model_ready(model_entry: Dict[str, Any]) -> Any:
+    """Load (and warm) the TensorFlow model for the current request."""
+
+    model = load_tf_model(model_entry["path"])
+    warmup_teachable_model(model, model_entry)
+    return model
 
 
 def resolve_model_entry(model_id: str | None = None) -> Dict[str, Any]:
@@ -991,16 +1100,17 @@ def resolve_model_entry(model_id: str | None = None) -> Dict[str, Any]:
     }
 
 
+prime_default_teachable_model()
+
+
 def classify_image(image_bytes: bytes, model_entry: Dict[str, Any]) -> Dict[str, Any]:
     """Run the Teachable Machine model on the provided image bytes."""
     try:
-        model = load_tf_model(model_entry["path"])
+        model = ensure_model_ready(model_entry)
     except RuntimeError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    input_shape = model.input_shape
-    if isinstance(input_shape, list):  # Some TF models have list of input shapes
-        input_shape = input_shape[0]
+    input_shape = extract_input_shape(model)
     preprocessed = preprocess_image(image_bytes, input_shape)
     predictions = model.predict(preprocessed, verbose=0)[0]
     predictions = predictions.tolist()

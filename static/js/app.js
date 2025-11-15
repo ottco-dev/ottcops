@@ -117,6 +117,8 @@ function cacheDom() {
   dom.fileStatus = document.getElementById("fileStatus");
   dom.analysisMode = document.getElementById("analysisMode");
   dom.analysisHint = document.getElementById("analysisHint");
+  dom.mlDebugLog = document.getElementById("mlDebugLog");
+  dom.mlDebugLogText = document.getElementById("mlDebugLogText");
   dom.streamForm = document.getElementById("streamForm");
   dom.streamName = document.getElementById("streamName");
   dom.streamUrl = document.getElementById("streamUrl");
@@ -143,6 +145,17 @@ function initTheme() {
 
 function applyTheme() {
   document.body.classList.toggle("theme-light", state.theme === "light");
+}
+
+function setMlDebugMessage(lines = []) {
+  if (!dom.mlDebugLog || !dom.mlDebugLogText) return;
+  if (!lines.length) {
+    dom.mlDebugLog.style.display = "none";
+    dom.mlDebugLogText.textContent = "";
+    return;
+  }
+  dom.mlDebugLog.style.display = "block";
+  dom.mlDebugLogText.textContent = lines.join("\n");
 }
 
 function initTemplates() {
@@ -252,6 +265,11 @@ function handleAnalysisModeChange() {
   if (dom.prompt) {
     dom.prompt.required = !isMl;
     dom.prompt.placeholder = isMl ? "Optionaler Hinweis für das ML-Log" : "Beschreibe die gewünschte Analyse";
+  }
+  if (isMl) {
+    setMlDebugMessage(["ML-Modus aktiv. Modelle werden beim nächsten Run initialisiert."]);
+  } else {
+    setMlDebugMessage([]);
   }
 }
 
@@ -424,6 +442,9 @@ async function handleAnalyzeSubmit(event) {
     showToast("Bitte mindestens ein Bild hinzufügen.");
     return;
   }
+  if (state.analysisMode === "ml") {
+    setMlDebugMessage(["Initialisiere Modell …", `Uploads: ${state.files.length}`]);
+  }
   dom.runStatus.textContent = "Analyse läuft …";
   dom.analyzeBtn.disabled = true;
   const formData = new FormData();
@@ -454,6 +475,9 @@ async function handleAnalyzeSubmit(event) {
     dom.resultJson.textContent = JSON.stringify({ status: "error", message: error.message }, null, 2);
     dom.debugPanel.classList.add("active");
     dom.debugPanel.textContent = `Client-Fehler: ${error.message}`;
+    if (state.analysisMode === "ml") {
+      setMlDebugMessage([`Fehler: ${error.message}`]);
+    }
   } finally {
     dom.analyzeBtn.disabled = false;
   }
@@ -465,6 +489,7 @@ function handleResult(payload, elapsedMs) {
   renderResultTabs(normalized);
   renderJson(normalized);
   renderDebug(normalized.debug, elapsedMs);
+  renderMlDebugWidget(normalized);
 }
 
 function normalizeResult(payload) {
@@ -582,6 +607,41 @@ function renderDebug(debug, clientMs) {
     <strong>Client:</strong> ${clientMs || "?"} ms<br />
     <strong>Prompt:</strong> ${debug?.prompt_preview || "-"}
   `;
+}
+
+function renderMlDebugWidget(result) {
+  if (!dom.mlDebugLog) return;
+  if (!result || result.analysis_mode !== "ml") {
+    setMlDebugMessage([]);
+    return;
+  }
+  const lines = [];
+  const debug = result.debug || {};
+  if (debug.model_name) {
+    lines.push(`Modell: ${debug.model_name}`);
+  }
+  if (debug.model_version) {
+    lines.push(`Version: ${debug.model_version}`);
+  }
+  if (debug.timings) {
+    const modelMs = debug.timings.model_ms ?? "?";
+    const totalMs = debug.timings.total_ms ?? "?";
+    lines.push(`Timings: Modell ${modelMs} ms · Gesamt ${totalMs} ms`);
+  }
+  if (debug.request_id) {
+    lines.push(`Request-ID: ${debug.request_id}`);
+  }
+  if (debug.timestamp) {
+    lines.push(`Zeit: ${debug.timestamp}`);
+  }
+  const firstClassification = result.items?.[0]?.analysis?.classification;
+  if (firstClassification?.top_label) {
+    const topConf = typeof firstClassification.top_confidence === "number"
+      ? `${(firstClassification.top_confidence * 100).toFixed(2)}%`
+      : firstClassification.top_confidence;
+    lines.push(`Top Label: ${firstClassification.top_label} (${topConf})`);
+  }
+  setMlDebugMessage(lines.length ? lines : ["ML-only Run abgeschlossen."]); 
 }
 
 function openModal(element) {
@@ -754,6 +814,7 @@ async function apiRequest(path, options = {}) {
 
 function renderResultPlaceholder() {
   dom.resultDisplay.innerHTML = `<p class="disclaimer">Noch keine Analyse durchgeführt.</p>`;
+  setMlDebugMessage([]);
 }
 
 async function handleStreamSubmit(event) {
