@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OTTO · OTTCOUTURE Grow Chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #05060f;
+        --panel: rgba(9, 12, 32, 0.9);
+        --accent: #40ffa3;
+        --accent-2: #6f7dff;
+        --text: #f6f8ff;
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at 20% 0%, rgba(111, 125, 255, 0.18), transparent 45%),
+          radial-gradient(circle at 80% 20%, rgba(64, 255, 163, 0.18), transparent 55%),
+          var(--bg);
+        color: var(--text);
+        padding: 2.5rem clamp(1.5rem, 4vw, 4rem);
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+      header {
+        border-radius: 32px;
+        padding: clamp(1.5rem, 3vw, 3rem);
+        background: linear-gradient(140deg, rgba(10, 14, 32, 0.9), rgba(5, 6, 18, 0.95));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+      }
+      header h1 {
+        margin-top: 0;
+        font-size: clamp(2rem, 4vw, 3.25rem);
+      }
+      header p {
+        margin-bottom: 0.75rem;
+        color: rgba(255, 255, 255, 0.72);
+      }
+      header .actions {
+        margin-top: 1.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      header .actions a {
+        text-decoration: none;
+        padding: 0.85rem 1.4rem;
+        border-radius: 999px;
+        font-weight: 600;
+        color: #05060f;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      }
+      main {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+      }
+      .card {
+        background: var(--panel);
+        border-radius: 28px;
+        padding: 1.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+      }
+      h2 {
+        margin-top: 0;
+      }
+      textarea {
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(5, 7, 22, 0.85);
+        color: var(--text);
+        min-height: 180px;
+        padding: 1rem;
+        font-family: inherit;
+        font-size: 1rem;
+      }
+      button {
+        border: none;
+        border-radius: 16px;
+        padding: 0.95rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        color: #05060f;
+      }
+      pre {
+        background: rgba(4, 6, 18, 0.9);
+        border-radius: 18px;
+        padding: 1.2rem;
+        min-height: 220px;
+        border: 1px solid rgba(64, 255, 163, 0.25);
+        color: #9ff6c8;
+        font-family: "Space Mono", "Space Grotesk", monospace;
+        white-space: pre-wrap;
+      }
+      footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 1.5rem;
+        color: rgba(255, 255, 255, 0.72);
+      }
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p style="text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.85rem; color: var(--accent)">
+        OTTCOUTURE.EU · OTTO SERVICE
+      </p>
+      <h1>OTTO · Grow Fragen im OPENCORE Stack</h1>
+      <p>
+        OTTO beantwortet kultivierungsrelevante Fragen mit demselben Vision-/LLM-Setup wie der Analyzer. Antworten sind klar,
+        strukturiert und verzichten auf medizinische Aussagen.
+      </p>
+      <p>
+        Rechte & Betrieb: <strong>ottcouture.eu</strong>. Support via <strong>otcdmin@outlook.com</strong>, Instagram
+        <strong>@ottcouture.eu</strong> oder Discord
+        <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+      </p>
+      <div class="actions">
+        <a href="/">Zur Analyse</a>
+        <a href="/config" style="background: rgba(255, 255, 255, 0.2); color: #fff">Konfiguration öffnen</a>
+      </div>
+    </header>
+    <main>
+      <section class="card">
+        <h2>1. Anfrage an OTTO</h2>
+        <p>
+          Beschreibe kurz das Setup oder die Fragestellung (z. B. Klima, Nährstoffe, Lichtplanung). OTTO liefert eine
+          strukturierte Antwort mit klaren Handlungsschritten.
+        </p>
+        <form id="otto-form">
+          <textarea id="otto-input" placeholder="Z. B. Wie optimiere ich VPD bei 26 °C Raumtemperatur?" required></textarea>
+          <button type="submit">Antwort abrufen</button>
+        </form>
+      </section>
+      <section class="card">
+        <h2>2. Antwort</h2>
+        <pre id="otto-output">Bereit.</pre>
+      </section>
+      <section class="card">
+        <h2>Hinweise & Kontakt</h2>
+        <p>
+          OTTO basiert auf dem OPENCORE Community Modell. Alle Ergebnisse sind technische Empfehlungen für Grow-Setups. Für
+          Feedback oder neue Modellvorschläge bitte <strong>otcdmin@outlook.com</strong>, Instagram
+          <strong>@ottcouture.eu</strong> oder Discord <strong>discord.gg/GMMSqePfPh</strong> nutzen.
+        </p>
+      </section>
+    </main>
+    <footer>
+      © <strong>OTTCOUTURE</strong> — Enterprise Tooling & OPENCORE Community Stack. Alle Rechte bei ottcouture.eu.
+    </footer>
+    <script>
+      const form = document.getElementById("otto-form");
+      const input = document.getElementById("otto-input");
+      const output = document.getElementById("otto-output");
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const prompt = input.value.trim();
+        if (!prompt) {
+          output.textContent = "Bitte eine Frage eingeben.";
+          return;
+        }
+        output.textContent = "OTTO arbeitet …";
+        try {
+          const response = await fetch("/api/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt }),
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Fehler beim Abruf.");
+          }
+          const data = await response.json();
+          output.textContent = data.response || "Keine Antwort erhalten.";
+        } catch (error) {
+          output.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>

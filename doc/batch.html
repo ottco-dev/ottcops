@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Batch-Analyse · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #fafafa;
+        color: #111527;
+      }
+      header {
+        border-bottom: 2px solid #1d2333;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #111527;
+        color: #fefefe;
+        padding: 1rem;
+        border-radius: 10px;
+        overflow-x: auto;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Batch-Analyse</h1>
+      <p>Mehrere Bilder lassen sich jetzt in einem Request bewerten. Das Backend fasst alles in einem Report zusammen.</p>
+      <nav>
+        <a href="/doc/index.html">Zurück zur Übersicht</a>
+        <a href="/doc/export.html">Export</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Workflow</h2>
+      <ol>
+        <li>Im Analyzer das Datei-Input benutzen oder Bilder direkt in die Dropzone ziehen.</li>
+        <li>Mehrere Dateien auswählen (jpg/png/webp). Die Vorschau zeigt alle Thumbnails.</li>
+        <li>Prompt wählen und auf „Analyse starten“ klicken.</li>
+        <li>Das UI zeigt einen Tab „Gesamt-Report“ plus einen Tab pro Bild mit Rohdaten.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>API Endpoint</h2>
+      <pre><code>POST /api/opencore/analyze-batch
+Content-Type: multipart/form-data
+
+prompt=&lt;text&gt;
+analysis_mode=hybrid   # oder ml
+model_id=&lt;optional&gt;
+files[]=@image1.jpg
+files[]=@image2.jpg</code></pre>
+      <p>Serverantwort:</p>
+      <pre><code>{
+  "status": "ok",
+  "summary": { "text": "Gesamtbewertung aller Bilder ..." },
+  "items": [
+    {
+      "image_id": "image1.jpg",
+      "analysis": { "classification": { ... }, "gpt_response": "..." }
+    }
+  ],
+  "debug": { "request_id": "...", "timings": { "total_ms": 1820 } }
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>Fehlerfälle</h2>
+      <ul>
+        <li><strong>Keine Dateien:</strong> Der Server liefert HTTP 400.</li>
+        <li><strong>Ungültige Bilder:</strong> Upload wird verworfen, die Response enthält Hinweise im Debug-Bereich.</li>
+        <li><strong>Timeout:</strong> Bei sehr vielen Bildern empfiehlt sich ein gestaffelter Upload.</li>
+        <li><strong>Falscher Modus:</strong> `analysis_mode` akzeptiert nur `hybrid` oder `ml`. Fehlende Prompts lösen im Hybrid-Modus HTTP 400 aus.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Best Practices</h2>
+      <ul>
+        <li>Maximal 8 Bilder pro Batch halten die Antwortzeiten stabil.</li>
+        <li>Prompt konsistent halten, damit die Summary sinnvoll aggregiert.</li>
+        <li>Bei Automation die `request_id` speichern, um Logs zu korrelieren.</li>
+      </ul>
+    </section>
+  </body>
+</html>

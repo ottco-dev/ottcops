@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Export-Funktionen · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        background: #fff;
+        color: #111527;
+        line-height: 1.6;
+      }
+      header {
+        border-bottom: 2px solid #111527;
+        margin-bottom: 2rem;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Export-Funktionen</h1>
+      <p>Reports können als JSON, PDF oder Share-Link weitergegeben werden.</p>
+      <nav>
+        <a href="/doc/index.html">Zurück</a>
+        <a href="/doc/home_automation.html">Home-Automation</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>JSON-Download</h2>
+      <ul>
+        <li>Button „JSON herunterladen“ anklicken.</li>
+        <li>Das UI generiert aus dem aktuellen Ergebnis eine Datei <code>opencore-report.json</code>.</li>
+        <li>Bei Batch-Analysen enthält sie Summary und alle Items.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>PDF-Report</h2>
+      <ul>
+        <li>Button „PDF-Report“ erstellt ein PDF direkt im Browser.</li>
+        <li>Inhalt: Datum/Uhrzeit, ausgewähltes Modell, Summary, auf Wunsch verkürzte Einzelresultate.</li>
+        <li>Die Generierung nutzt <code>jsPDF</code> clientseitig, es verlassen keine Daten den Browser.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Share-Link</h2>
+      <ol>
+        <li>„Share-Link erzeugen“ klicken.</li>
+        <li>Das Frontend sendet den Report an <code>/api/opencore/share</code>.</li>
+        <li>Die Antwort enthält eine URL <code>/share/&lt;id&gt;</code> und einen Copy-Button.</li>
+        <li>Der Viewer lädt die Daten serverseitig und zeigt sie in einer lesbaren Karte an.</li>
+      </ol>
+      <pre><code>POST /api/opencore/share
+{
+  "payload": { ... Analyse-JSON ... }
+}
+
+Antwort:
+{
+  "share_id": "abc123", "url": "/share/abc123"
+}</code></pre>
+      <p>Share-Daten liegen serverseitig als JSON-Dateien und können bei Bedarf manuell gelöscht werden.</p>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Debug-Modus · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        background: #fff;
+        color: #121828;
+        line-height: 1.6;
+      }
+      header {
+        border-bottom: 2px solid #121828;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #0f172a;
+        color: #eef2ff;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Debug-Modus</h1>
+      <p>Das Debug-Panel unterstützt Teams beim Troubleshooting von Latenzen oder Upload-Problemen.</p>
+      <nav>
+        <a href="/doc/index.html">Zurück</a>
+        <a href="/doc/api_token_mode.html">API-Token-Mode</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Aktivierung</h2>
+      <ul>
+        <li>Checkbox „Debug anzeigen“ im Analyzer aktivieren.</li>
+        <li>Oder URL-Parameter <code>?debug=1</code> anhängen – das UI aktiviert die Checkbox automatisch.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Datenpunkte</h2>
+      <ul>
+        <li><strong>request_id:</strong> eindeutiger Schlüssel pro Anfrage – hilft beim Abgleich mit Server-Logs.</li>
+        <li><strong>model_version:</strong> zeigt ID und Quelle des Teachable-Machine-Modells.</li>
+        <li><strong>timings:</strong> Millisekunden für Klassifikation, LLM-Aufruf und Gesamtzeit.</li>
+        <li><strong>prompt_preview:</strong> gekürzte Ansicht des Prompts, damit nachvollziehbar bleibt, welche Aufgabe gestellt wurde.</li>
+        <li><strong>error:</strong> nur gesetzt, wenn das Backend einen Fehler meldet.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Interpretation</h2>
+      <pre><code>{
+  "debug": {
+    "request_id": "6c7b1e0c19e3429f",
+    "model_version": "registry:trichome-alpha",
+    "timings": {
+      "model_ms": 982,
+      "llm_ms": 615,
+      "total_ms": 1710
+    }
+  }
+}</code></pre>
+      <ul>
+        <li>Wenn <code>model_ms</code> hoch ist: GPU/CPU-Auslastung oder zu große Bilder prüfen.</li>
+        <li>Wenn <code>llm_ms</code> hoch ist: Netzwerk-Latenz oder LLM-Provider kontrollieren.</li>
+        <li>Bei Fehlern liefert das Panel die HTTP-Fehlermeldung inklusive Request-ID.</li>
+      </ul>
+    </section>
+  </body>
+</html>
