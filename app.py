@@ -11,10 +11,8 @@ import base64
 import contextlib
 import io
 import json
-import logging
 import os
 import re
-import socket
 import shutil
 import tempfile
 import zipfile
@@ -61,13 +59,10 @@ GPT_MODEL = os.getenv("OPENAI_GPT_MODEL", "gpt-4.1-mini")
 BASE_DIR = Path(__file__).resolve().parent
 SIMPLE_UI_PATH = BASE_DIR / "static" / "index.html"
 CONFIG_UI_PATH = BASE_DIR / "static" / "config.html"
-COMPLETIONS_UI_PATH = BASE_DIR / "static" / "completions.html"
 TM_MODELS_DIR = BASE_DIR / "TM-models"
 TM_MODELS_DIR.mkdir(parents=True, exist_ok=True)
 TM_REGISTRY_PATH = TM_MODELS_DIR / "registry.json"
 REQUIRED_TM_FILES = {"metadata.json", "model.json", "weights.bin"}
-NETWORK_CONFIG_PATH = BASE_DIR / "network-config.json"
-SETTINGS_PATH = BASE_DIR / "app-settings.json"
 MODEL_TYPE_ALIASES = {
     "trichome": "trichome",
     "trichomen": "trichome",
@@ -78,15 +73,8 @@ MODEL_TYPE_ALIASES = {
     "healthcare": "health",
     "gesundheit": "health",
 }
-NETWORK_DEFAULT_CONFIG = {
-    "enabled": False,
-    "hostname": "ottcolab.local",
-    "port": 8000,
-    "ip": None,
-    "url": None,
-}
 
-_model_cache: Dict[str, tf.keras.Model] = {}
+_model: tf.keras.Model | None = None
 _client: OpenAI | None = None
 _network_zeroconf: Zeroconf | None = None
 _network_service: ServiceInfo | None = None
@@ -293,46 +281,20 @@ def find_model_root(temp_root: Path) -> Path:
 
 
 def list_tm_models() -> List[Dict[str, Any]]:
-    default_id = _app_settings.get("default_model_id")
-    enriched: List[Dict[str, Any]] = []
-    for entry in load_tm_registry():
-        enriched_entry = dict(entry)
-        enriched_entry.setdefault("type", "trichome")
-        enriched_entry["is_default"] = enriched_entry.get("id") == default_id
-        enriched.append(enriched_entry)
-    return enriched
+    entries = load_tm_registry()
+    for entry in entries:
+        entry.setdefault("type", "trichome")
+    return entries
 
 
-def find_tm_entry(model_id: str) -> Optional[Dict[str, Any]]:
-    for entry in load_tm_registry():
-        if entry.get("id") == model_id:
-            return entry
-    return None
-
-
-def set_default_tm_model(model_id: str | None) -> Optional[Dict[str, Any]]:
-    if model_id is None:
-        _app_settings["default_model_id"] = None
-        save_app_settings(_app_settings)
-        return None
-    entry = find_tm_entry(model_id)
-    if entry is None:
-        raise HTTPException(status_code=404, detail="Modell wurde nicht gefunden.")
-    _app_settings["default_model_id"] = model_id
-    save_app_settings(_app_settings)
-    return entry
-
-
-def load_tf_model(model_path: Path) -> tf.keras.Model:
-    """Load and cache a Teachable Machine TensorFlow model."""
-    resolved = str(model_path.resolve())
-    model = _model_cache.get(resolved)
-    if model is None:
-        if not model_path.is_dir():
-            raise RuntimeError(f"Model directory '{model_path}' not found.")
-        model = tf.keras.models.load_model(model_path)
-        _model_cache[resolved] = model
-    return model
+def get_tf_model() -> tf.keras.Model:
+    """Load and cache the Teachable Machine TensorFlow model."""
+    global _model
+    if _model is None:
+        if not os.path.isdir(MODEL_PATH):
+            raise RuntimeError(f"Model directory '{MODEL_PATH}' not found.")
+        _model = tf.keras.models.load_model(MODEL_PATH)
+    return _model
 
 
 def get_openai_client() -> OpenAI:
@@ -514,30 +476,6 @@ def load_config_ui() -> str:
     return "<html><body><h1>Config UI missing</h1><p>Please build static/config.html.</p></body></html>"
 
 
-def load_completions_ui() -> str:
-    if COMPLETIONS_UI_PATH.is_file():
-        return COMPLETIONS_UI_PATH.read_text(encoding="utf-8")
-    return "<html><body><h1>Completions UI missing</h1></body></html>"
-
-
-@app.on_event("startup")
-async def startup_network_mode() -> None:  # pragma: no cover - depends on runtime env
-    if _network_runtime_config.get("enabled"):
-        try:
-            state = activate_network_broadcast(
-                _network_runtime_config.get("hostname", NETWORK_DEFAULT_CONFIG["hostname"]),
-                int(_network_runtime_config.get("port", NETWORK_DEFAULT_CONFIG["port"])),
-            )
-            _network_runtime_config.update(state)
-        except Exception as exc:  # noqa: BLE001 - log and continue
-            logger.warning("mDNS Broadcast konnte nicht aktiviert werden: %s", exc)
-
-
-@app.on_event("shutdown")
-async def shutdown_network_mode() -> None:  # pragma: no cover - depends on runtime env
-    deactivate_network_broadcast()
-
-
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 async def root_ui() -> HTMLResponse:
     """Serve a very small HTML helper to try the API without Swagger."""
@@ -550,60 +488,10 @@ async def config_ui() -> HTMLResponse:
     return HTMLResponse(load_config_ui())
 
 
-@app.get("/completions", response_class=HTMLResponse, include_in_schema=False)
-async def completions_ui() -> HTMLResponse:
-    return HTMLResponse(load_completions_ui())
-
-
-@app.get("/network/status", response_class=JSONResponse)
-async def network_status() -> JSONResponse:
-    """Expose the current mDNS broadcast status for the UI."""
-    return JSONResponse({"status": get_network_status(), "mdns_available": Zeroconf is not None})
-
-
-@app.post("/network/announce", response_class=JSONResponse)
-async def network_announce(payload: NetworkPayload) -> JSONResponse:
-    """Enable or refresh the WiFi broadcast hostname."""
-
-    try:
-        status = enable_network_mode(payload.hostname, payload.port)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except RuntimeError as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return JSONResponse({"status": status, "mdns_available": Zeroconf is not None})
-
-
-@app.delete("/network/announce", response_class=JSONResponse)
-async def network_announce_stop() -> JSONResponse:
-    """Disable the WiFi broadcast hostname."""
-
-    status = disable_network_mode()
-    return JSONResponse({"status": status, "mdns_available": Zeroconf is not None})
-
-
 @app.get("/tm-models", response_class=JSONResponse)
 async def tm_models() -> JSONResponse:
     """Return the registered Teachable Machine models."""
-    return JSONResponse(
-        {
-            "models": list_tm_models(),
-            "default_model_id": _app_settings.get("default_model_id"),
-            "has_builtin": Path(MODEL_PATH).is_dir(),
-        }
-    )
-
-
-@app.post("/tm-models/default/{model_id}", response_class=JSONResponse)
-async def tm_models_set_default(model_id: str) -> JSONResponse:
-    entry = set_default_tm_model(model_id)
-    return JSONResponse({"default_model_id": _app_settings.get("default_model_id"), "model": entry})
-
-
-@app.delete("/tm-models/default", response_class=JSONResponse)
-async def tm_models_clear_default() -> JSONResponse:
-    set_default_tm_model(None)
-    return JSONResponse({"default_model_id": None})
+    return JSONResponse({"models": list_tm_models()})
 
 
 @app.post("/tm-models/upload")
@@ -668,11 +556,7 @@ async def upload_tm_model(
     registry.append(entry)
     save_tm_registry(registry)
 
-    if _app_settings.get("default_model_id") is None:
-        _app_settings["default_model_id"] = entry["id"]
-        save_app_settings(_app_settings)
-
-    return JSONResponse({"message": "Modell gespeichert", "model": entry, "default_model_id": _app_settings.get("default_model_id")})
+    return JSONResponse({"message": "Modell gespeichert", "model": entry})
 
 
 @app.post("/analyze")

@@ -247,16 +247,15 @@
     <div class="page">
       <header>
         <p style="text-transform: uppercase; letter-spacing: 0.25em; font-size: 0.8rem; color: var(--accent)">
-          OTTCOUTURE.EU — ENTERPRISE OPENCORE
+          OTTCOUTURE.EU — RIGHTS RESERVED
         </p>
         <h1>Self-Host Deck für OTTCOPS</h1>
         <p>
-          Diese Seite bündelt alle Einstellungen für das OPENCORE Community Modell: Providerwahl, Systemprompts, TM-Depot und
-          Netzwerkfreigaben. Fokus: saubere Workflows für Cannabis-Analysen, ohne Marketing-Sprache.
+          Provider-Switchboard für OpenAI, Ollama oder LM Studio. Alles gebrandet & owned by
+          <strong>ottcouture.eu</strong>, keine medizinischen Claims – nur nerdige Cannabis-Vision-Flows.
         </p>
         <p>
-          Rechte & Betrieb liegen bei <strong>ottcouture.eu</strong>. Support bitte an <strong>otcdmin@outlook.com</strong>,
-          Instagram <strong>@ottcouture.eu</strong> oder Discord
+          Support ping an <strong>otcdmin@outlook.com</strong>, Insta <strong>@ottcouture.eu</strong> oder Discord
           <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener" style="color: var(--accent)">
             discord.gg/GMMSqePfPh
           </a>
@@ -321,8 +320,8 @@
       <section class="card">
         <h2>2. Cannabis System Prompts</h2>
         <p class="cta">
-          Die Presets liefern strukturierte Ausgangsprompts für Trichome-, Terpen- und Health-Analysen. Sie sind bewusst
-          knapp formuliert und lassen sich bei Bedarf erweitern.
+          Presets = kurze, nerdige Specs für Trichome-Mapping, Terpen-Pairing oder Leaf-Glitches. Nutze sie als
+          Ausgangspunkt und modde sie nach deinem Flavor.
         </p>
         <div class="prompt-buttons" id="prompt-buttons"></div>
         <textarea id="prompt-text"></textarea>
@@ -378,8 +377,8 @@
         <h2>5. OTTCOUTURE Teachable Machine Depot</h2>
         <p>
           ZIP (metadata.json, model.json, weights.bin) hochladen, Typ wählen und wir pinnen das Paket unter
-          <code>/TM-models</code>. Die Modelle stehen anschließend im Analyzer sowie im OTTO-Chat zur Auswahl und bleiben bei
-          <strong>ottcouture.eu</strong> gebrandet.
+          <code>/TM-models</code>. Beiträge bleiben bei <strong>ottcouture.eu</strong> gebrandet, egal ob du Starter
+          austauschst oder neue Experimente einspielst.
         </p>
         <div class="grid two">
           <label>
@@ -408,10 +407,8 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
         <div class="actions" style="margin-top: 1rem">
           <button class="primary" id="tm-upload-btn">ZIP installieren</button>
           <button class="secondary" id="tm-refresh-btn" type="button">Modelle aktualisieren</button>
-          <button class="secondary" id="tm-clear-default" type="button">Standard zurücksetzen</button>
         </div>
         <p id="tm-status" class="cta" style="display: none"></p>
-        <p id="tm-default-note" class="cta"></p>
         <div class="tm-list">
           <h3>Installierte OTTCOPS TM Modelle</h3>
           <ul id="tm-models">
@@ -420,38 +417,8 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
         </div>
       </section>
 
-      <section class="card" id="network-card">
-        <h2>6. WiFi Broadcast &amp; ottcolab.local</h2>
-        <p>
-          Damit jedes Device im selben WLAN sofort <code>ottcolab.local</code> erreicht, announcen wir via mDNS einen Hostnamen.
-          Dieser Mode gehört komplett zu <strong>ottcouture.eu</strong>; Feedback an otcdmin@outlook.com oder über
-          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
-        </p>
-        <div class="grid two">
-          <label>
-            <span>Hostname (.local)</span>
-            <input id="mdns-host" type="text" placeholder="ottcolab.local" />
-            <small>Wir normalisieren auf .local – funktioniert auf macOS, Windows, Linux &amp; iOS/Android.</small>
-          </label>
-          <label>
-            <span>Port</span>
-            <input id="mdns-port" type="number" min="1" max="65535" placeholder="8000" />
-            <small>Gleicher Port wie dein Uvicorn-Server. Standard 8000.</small>
-          </label>
-        </div>
-        <div class="actions" style="margin-top: 1rem">
-          <button class="primary" id="mdns-start" type="button">Broadcast aktivieren</button>
-          <button class="secondary" id="mdns-stop" type="button">Stoppen</button>
-        </div>
-        <p class="cta" id="mdns-status">Status: lädt …</p>
-        <p class="cta">
-          Technischer Hinweis: Wir announcen `_http._tcp` via <code>zeroconf</code>. Bitte sicherstellen, dass
-          <code>pip install zeroconf</code> ausgeführt wurde, sonst kann der Broadcast nicht starten.
-        </p>
-      </section>
-
       <section class="card">
-        <h2>7. Einstellungen speichern</h2>
+        <h2>6. Einstellungen speichern</h2>
         <p>
           Wir speichern alles nur lokal unter <code>localStorage.cannabisLLMConfig</code>. Kopiere den Dump nach
           Bedarf in andere OTTCOPS Instanzen.
@@ -485,25 +452,25 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
           id: "potency",
           label: "Trichome Heatmap",
           text:
-            "Analysiere sichtbare Trichome, Harzflächen und Farbverläufe. Erstelle ein JSON mit den Keys resin_density (Prozent), maturity_score (0-100) und observations[] für kurze Stichpunkte.",
+            "Du bist ein OTTCOUTURE Signal-Engineer. Analysiere sichtbare Trichome, Harzflächen und Farbdrift, schätze daraus eine JSON-Heatmap (keys: resin_density, maturity_score, vibe_tags). Keine Medizin, nur rohe Werte mit Prozentbereichen.",
         },
         {
           id: "terpen",
           label: "Terpen Stack",
           text:
-            "Leite aus Farbe, Struktur und Kristallen mögliche Terpen-Cluster ab. JSON-Struktur: dominant_terps[], aroma_tags[], pairing_notes.",
+            "Handle als Aroma-Hacker von ottcouture.eu. Lies Farbe, Struktur und Kristall-Highlights aus und leite mögliche Terpen-Cluster ab. Liefere ein JSON mit fields wie dominant_terps[], aroma_tags[], pairing_notes.",
         },
         {
           id: "contaminants",
           label: "Glitch Hunt",
           text:
-            "Scanne nach Fremdkörpern, Schimmel oder Blattstress. JSON-Ausgabe mit severity_scores, detected_artifacts und recommended_actions.",
+            "Scanne die Buds nach Glitches: Schimmel, Seeds, abgeknickte Leafs, Fremdobjekte. Erstelle ein JSON mit severity_scores, detected_artifacts und quick_fix_steps. Bleib sachlich, keine medizinischen Versprechen.",
         },
         {
           id: "compliance",
           label: "Drop Dossier",
           text:
-            "Dokumentiere sichtbare Merkmale und Verpackungsdetails für ein Sammler-Briefing. JSON-Felder: meta, packaging, release_notes.",
+            "Du baust ein nerdiges Drop-Briefing für Sammler. Dokumentiere sichtbare Merkmale, Batch-Vibes, mögliche Herkunft und packe es in ein JSON mit sections meta, packaging, hype_calls. Fokus auf Style, nicht auf Behörden.",
         },
       ];
 
@@ -524,11 +491,6 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
       const tmRefreshBtn = document.getElementById("tm-refresh-btn");
       const tmStatus = document.getElementById("tm-status");
       const tmList = document.getElementById("tm-models");
-      const mdnsHostInput = document.getElementById("mdns-host");
-      const mdnsPortInput = document.getElementById("mdns-port");
-      const mdnsStatus = document.getElementById("mdns-status");
-      const mdnsStartBtn = document.getElementById("mdns-start");
-      const mdnsStopBtn = document.getElementById("mdns-stop");
 
       function setActiveProvider(value) {
         providerGroup.querySelectorAll(".provider").forEach((el) => {
@@ -604,9 +566,6 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
           const models = payload.models || [];
           if (!models.length) {
             tmList.innerHTML = "<li>Noch keine Community-Modelle gespeichert.</li>";
-            if (tmDefaultNote)
-              tmDefaultNote.textContent = "Standard: OPENCORE Referenz (sofern TEACHABLE_MODEL_PATH gesetzt ist).";
-            if (tmClearBtn) tmClearBtn.disabled = true;
             return;
           }
           tmList.innerHTML = "";
@@ -620,61 +579,13 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
             const meta = document.createElement("small");
             const strainInfo = model.metadata?.labels?.join ? model.metadata.labels.join(", ") : "–";
             meta.innerHTML = `Pfad: ${model.path}<br/>Labels: ${strainInfo}<br/>Hinzugefügt: ${added}`;
-            const defaultButton = document.createElement("button");
-            defaultButton.type = "button";
-            defaultButton.className = model.is_default ? "primary" : "secondary";
-            defaultButton.textContent = model.is_default ? "Standard aktiv" : "Als Standard setzen";
-            defaultButton.disabled = model.is_default;
-            defaultButton.style.marginTop = "0.5rem";
-            defaultButton.addEventListener("click", () => setDefaultTmModel(model.id));
             li.appendChild(label);
             li.appendChild(meta);
-            li.appendChild(defaultButton);
             tmList.appendChild(li);
           });
-          const active = models.find((model) => model.is_default);
-          if (tmDefaultNote) {
-            tmDefaultNote.textContent = active
-              ? `Standard im Analyzer: ${active.name}`
-              : "Standard: OPENCORE Referenz (TEACHABLE_MODEL_PATH).";
-          }
-          if (tmClearBtn) tmClearBtn.disabled = !active;
         } catch (error) {
           tmList.innerHTML = "<li>Fehler beim Laden der Modelle.</li>";
-          if (tmDefaultNote) tmDefaultNote.textContent = "Standard konnte nicht ermittelt werden.";
-          if (tmClearBtn) tmClearBtn.disabled = true;
           console.error("TM load", error);
-        }
-      }
-
-      async function setDefaultTmModel(modelId) {
-        if (!modelId) return;
-        setTmStatus("Standard wird aktualisiert …");
-        try {
-          const response = await fetch(`/tm-models/default/${modelId}`, { method: "POST" });
-          if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || "Standard konnte nicht gesetzt werden.");
-          }
-          setTmStatus("Standardmodell gespeichert.");
-          await refreshTmModels();
-        } catch (error) {
-          setTmStatus(error.message, true);
-        }
-      }
-
-      async function clearDefaultTmModel() {
-        setTmStatus("Standard wird zurückgesetzt …");
-        try {
-          const response = await fetch("/tm-models/default", { method: "DELETE" });
-          if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || "Zurücksetzen fehlgeschlagen.");
-          }
-          setTmStatus("Standard entfernt. Der Analyzer nutzt jetzt die OPENCORE Referenz oder das erste Modell.");
-          await refreshTmModels();
-        } catch (error) {
-          setTmStatus(error.message, true);
         }
       }
 
@@ -706,87 +617,6 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
         } finally {
           tmUploadBtn.disabled = false;
           tmUploadBtn.textContent = "ZIP installieren";
-        }
-      }
-
-      async function refreshNetworkStatus() {
-        if (!mdnsStatus) return;
-        mdnsStatus.textContent = "Status: lädt …";
-        try {
-          const response = await fetch("/network/status");
-          if (!response.ok) throw new Error("HTTP " + response.status);
-          const payload = await response.json();
-          const status = payload.status || {};
-          const available = payload.mdns_available;
-          if (!available) {
-            mdnsStatus.textContent =
-              "zeroconf fehlt. Bitte 'pip install zeroconf' ausführen, damit ottcolab.local announced werden kann.";
-            if (mdnsStartBtn) mdnsStartBtn.disabled = true;
-            if (mdnsStopBtn) mdnsStopBtn.disabled = true;
-            return;
-          }
-          if (mdnsHostInput) mdnsHostInput.value = status.hostname || "ottcolab.local";
-          if (mdnsPortInput) mdnsPortInput.value = status.port || 8000;
-          if (status.enabled) {
-            mdnsStatus.innerHTML =
-              `Broadcast aktiv: <strong>${status.hostname}</strong> → ${status.ip || "?"}. URL: <code>${status.url}</code>`;
-            if (mdnsStopBtn) mdnsStopBtn.disabled = false;
-          } else {
-            mdnsStatus.textContent = "Noch nicht aktiv. Host jetzt announcen, damit jedes Device im WLAN zugreifen kann.";
-            if (mdnsStopBtn) mdnsStopBtn.disabled = true;
-          }
-          if (mdnsStartBtn) {
-            mdnsStartBtn.disabled = false;
-            mdnsStartBtn.textContent = status.enabled ? "Broadcast neu setzen" : "Broadcast aktivieren";
-          }
-        } catch (error) {
-          mdnsStatus.textContent = "Status konnte nicht geladen werden.";
-          console.error("Network status", error);
-        }
-      }
-
-      async function startNetworkBroadcast() {
-        if (!mdnsHostInput || !mdnsPortInput) return;
-        const hostname = mdnsHostInput.value.trim() || "ottcolab.local";
-        const port = parseInt(mdnsPortInput.value, 10) || 8000;
-        if (mdnsStartBtn) {
-          mdnsStartBtn.disabled = true;
-          mdnsStartBtn.textContent = "Announcen …";
-        }
-        if (mdnsStatus) {
-          mdnsStatus.textContent = "Broadcast wird aktiviert …";
-        }
-        try {
-          const response = await fetch("/network/announce", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ hostname, port }),
-          });
-          if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || "Broadcast fehlgeschlagen");
-          }
-          await refreshNetworkStatus();
-        } catch (error) {
-          if (mdnsStatus) mdnsStatus.textContent = error.message;
-          console.error("Broadcast", error);
-        } finally {
-          if (mdnsStartBtn) {
-            mdnsStartBtn.disabled = false;
-            mdnsStartBtn.textContent = "Broadcast aktivieren";
-          }
-        }
-      }
-
-      async function stopNetworkBroadcast() {
-        if (mdnsStopBtn) mdnsStopBtn.disabled = true;
-        if (mdnsStatus) mdnsStatus.textContent = "Broadcast wird deaktiviert …";
-        try {
-          await fetch("/network/announce", { method: "DELETE" });
-          await refreshNetworkStatus();
-        } catch (error) {
-          if (mdnsStatus) mdnsStatus.textContent = "Broadcast konnte nicht gestoppt werden.";
-          console.error("Broadcast stop", error);
         }
       }
 
@@ -843,18 +673,7 @@ Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMS
       if (tmRefreshBtn) {
         tmRefreshBtn.addEventListener("click", refreshTmModels);
       }
-      if (tmClearBtn) {
-        tmClearBtn.addEventListener("click", clearDefaultTmModel);
-      }
       refreshTmModels();
-
-      if (mdnsStartBtn) {
-        mdnsStartBtn.addEventListener("click", startNetworkBroadcast);
-      }
-      if (mdnsStopBtn) {
-        mdnsStopBtn.addEventListener("click", stopNetworkBroadcast);
-      }
-      refreshNetworkStatus();
     </script>
   </body>
 </html>
