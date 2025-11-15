@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Prompt-Templates · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #fff;
+        color: #0f172a;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+      }
+      th,
+      td {
+        border: 1px solid #d5dae4;
+        padding: 0.75rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #f3f5fb;
+      }
+      pre {
+        background: #0f172a;
+        color: #f9fafc;
+        padding: 0.85rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Prompt-Templates</h1>
+      <p>Vorlagen beschleunigen Anfragen und stellen sicher, dass Analysen konsistent formuliert werden.</p>
+      <nav>
+        <a href="/doc/index.html">Zurück zur Übersicht</a>
+        <a href="/doc/batch.html">Batch-Analyse</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Standard-Templates</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>Beschreibung</th>
+            <th>Prompt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Trichome-Reifegrad</td>
+            <td>Bewertet Klar/Milchig/Amber-Verteilung und nennt das Erntefenster.</td>
+            <td>
+              <pre><code>Analysiere bitte die Trichome auf Klar/Milchig/Amber, beschreibe die Verteilung und schätze das optimale Erntefenster.</code></pre>
+            </td>
+          </tr>
+          <tr>
+            <td>Bud-Health / Schimmel</td>
+            <td>Identifiziert Schimmel, Fäulnis oder andere Bud-Probleme.</td>
+            <td>
+              <pre><code>Untersuche das Bild auf Schimmel, Fäulnis oder andere Probleme der Bud-Gesundheit und beschreibe die Risiken.</code></pre>
+            </td>
+          </tr>
+          <tr>
+            <td>Pest-Detection</td>
+            <td>Sucht nach sichtbaren Schädlingen und typischen Schadmustern.</td>
+            <td>
+              <pre><code>Analysiere das Bild auf sichtbare Schädlinge oder typische Schadbilder und beschreibe die Befunde.</code></pre>
+            </td>
+          </tr>
+          <tr>
+            <td>Bag Appeal</td>
+            <td>Fokussiert auf Trim, Struktur, Frost und Farbspiel.</td>
+            <td>
+              <pre><code>Bewerte das visuelle Erscheinungsbild (Bag Appeal) der Buds: Trim, Struktur, Trichomdichte, Farbspiel, Gesamteindruck.</code></pre>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Templates anwenden</h2>
+      <ol>
+        <li>Auf der Analyzer-Seite das Dropdown "Prompt-Template" öffnen.</li>
+        <li>Gewünschte Vorlage auswählen.</li>
+        <li>Der Prompt-Textarea wird automatisch befüllt und kann anschließend ergänzt werden.</li>
+      </ol>
+      <p>Ein Wechsel überschreibt den vorhandenen Prompt. Speichere individuelle Anpassungen über die Funktion "Template speichern".</p>
+    </section>
+
+    <section>
+      <h2>Eigene Templates verwalten</h2>
+      <ul>
+        <li>Button „Eigenes Template speichern“ anklicken.</li>
+        <li>Dialog ausfüllen (Titel + Beschreibung) und bestätigen.</li>
+        <li>Vorlagen werden lokal im Browser gespeichert (<code>localStorage</code>) und nur dort angezeigt.</li>
+        <li>Eigenes Template löschen: In der Template-Liste auf das Papierkorb-Icon klicken.</li>
+      </ul>
+      <p>Die Daten verlassen das Gerät nicht. Ideal für interne Playbooks oder kurzfristige Kampagnen.</p>
+    </section>
+
+    <section>
+      <h2>Tipps für gute Prompts</h2>
+      <ul>
+        <li>Kombiniere Bildkontext (Anbauphase, Lichtbedingungen) mit einer klaren Fragestellung.</li>
+        <li>Definiere erwartete Ausgabe-Abschnitte (z. B. "Risiken", "Empfehlungen").</li>
+        <li>Vermeide medizinische Aussagen – fokussiere auf Anbau, Hygiene und Produktqualität.</li>
+      </ul>
+    </section>
+  </body>
+</html>
