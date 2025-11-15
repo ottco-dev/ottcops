@@ -941,6 +941,40 @@ class SavedModelWrapper:
         return first.numpy()
 
 
+def _discover_model_artifact(model_path: Path) -> tuple[str, Path]:
+    """Return (type, path) tuple for the first usable artifact under model_path."""
+
+    if model_path.is_file():
+        suffix = model_path.suffix.lower()
+        if suffix in {".keras", ".h5"}:
+            return ("keras", model_path)
+        raise RuntimeError(
+            "Unbekanntes Modellformat. Bitte ein .keras oder .h5 Modell bereitstellen oder ein SavedModel-Verzeichnis nutzen."
+        )
+
+    if not model_path.exists():
+        raise RuntimeError(f"Model directory '{model_path}' not found.")
+
+    saved_model_file = model_path / "saved_model.pb"
+    if saved_model_file.is_file():
+        return ("savedmodel", model_path)
+
+    for nested_saved_model in model_path.rglob("saved_model.pb"):
+        return ("savedmodel", nested_saved_model.parent)
+
+    keras_candidates = list(model_path.glob("*.keras")) + list(model_path.glob("*.h5"))
+    if not keras_candidates:
+        keras_candidates = list(model_path.rglob("*.keras")) + list(model_path.rglob("*.h5"))
+
+    if keras_candidates:
+        keras_candidates.sort()
+        return ("keras", keras_candidates[0])
+
+    raise RuntimeError(
+        "Modellordner enthält weder ein SavedModel noch eine .keras/.h5 Datei. Bitte Export überprüfen."
+    )
+
+
 def load_tf_model(model_path: Path) -> Any:
     """Load and cache Teachable Machine models across formats."""
 
@@ -948,50 +982,28 @@ def load_tf_model(model_path: Path) -> Any:
     model = _model_cache.get(resolved)
     if model is not None:
         return model
-    if not model_path.exists():
-        raise RuntimeError(f"Model directory '{model_path}' not found.")
 
-    # Prefer SavedModel directories because Keras 3 can no longer import them via load_model().
-    if model_path.is_dir():
-        saved_model_file = model_path / "saved_model.pb"
-        if saved_model_file.is_file():
-            model = SavedModelWrapper(model_path)
-        else:
-            # Allow directories that only contain a single Keras/H5 artifact.
-            keras_candidates = list(model_path.glob("*.keras")) + list(model_path.glob("*.h5"))
-            if keras_candidates:
-                candidate = keras_candidates[0]
-                try:
-                    model = tf.keras.models.load_model(candidate)
-                except ValueError as exc:
-                    raise RuntimeError(
-                        f"Keras Modell '{candidate}' konnte nicht geladen werden: {exc}"
-                    ) from exc
-            else:
-                raise RuntimeError(
-                    "Modellordner enthält kein SavedModel und keine .keras/.h5 Datei."
-                )
+    artifact_type, artifact_path = _discover_model_artifact(model_path)
+    if artifact_type == "savedmodel":
+        model = SavedModelWrapper(artifact_path)
     else:
-        suffix = model_path.suffix.lower()
-        if suffix not in {".keras", ".h5"}:
-            raise RuntimeError(
-                "Unbekanntes Modellformat. Bitte ein .keras oder .h5 Modell bereitstellen oder ein SavedModel-Verzeichnis nutzen."
-            )
         try:
-            model = tf.keras.models.load_model(model_path)
+            model = tf.keras.models.load_model(artifact_path)
         except ValueError as exc:
-            saved_model_file = model_path / "saved_model.pb"
+            saved_model_file = artifact_path / "saved_model.pb"
             if saved_model_file.is_file():
                 logger.info(
                     "Keras load_model() schlug fehl (%s). Fallback auf SavedModelWrapper.",
                     exc,
                 )
-                model = SavedModelWrapper(model_path)
+                model = SavedModelWrapper(artifact_path)
             else:
-                raise
+                raise RuntimeError(
+                    f"Keras Modell '{artifact_path}' konnte nicht geladen werden: {exc}"
+                ) from exc
 
     _model_cache[resolved] = model
-    logger.info("Teachable Machine Modell geladen: %s", resolved)
+    logger.info("Teachable Machine Modell geladen: %s (Quelle: %s)", resolved, artifact_type)
     return model
 
 
