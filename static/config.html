@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OTTCOUTURE Self-Host Konfigurator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #040510;
+        --card: rgba(9, 12, 34, 0.92);
+        --muted: rgba(255, 255, 255, 0.72);
+        --accent: #40ffa3;
+        --accent-2: #6f7dff;
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #f8fbff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at 10% 0%, rgba(111, 125, 255, 0.15), transparent 45%),
+          radial-gradient(circle at 80% 20%, rgba(64, 255, 163, 0.25), transparent 55%),
+          var(--bg);
+        min-height: 100vh;
+        padding: 2.5rem clamp(1rem, 3vw, 4rem) 3rem;
+        color: #f8fbff;
+      }
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+      }
+      header {
+        background: linear-gradient(135deg, rgba(10, 12, 32, 0.9), rgba(9, 9, 22, 0.95));
+        border-radius: 32px;
+        padding: clamp(1.5rem, 3vw, 3rem);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 40px 80px rgba(2, 3, 6, 0.8);
+      }
+      header h1 {
+        font-size: clamp(2rem, 4vw, 3.25rem);
+        margin-bottom: 0.75rem;
+      }
+      header p {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      header .actions {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      header .actions a {
+        text-decoration: none;
+        padding: 0.85rem 1.25rem;
+        border-radius: 999px;
+        font-weight: 600;
+        color: #05060f;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      }
+      .grid {
+        display: grid;
+        gap: 1.25rem;
+      }
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      .card {
+        background: var(--card);
+        border-radius: 26px;
+        padding: 1.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.35rem;
+      }
+      h3 {
+        margin-top: 0;
+        font-size: 1.1rem;
+      }
+      p,
+      li,
+      label,
+      small {
+        color: var(--muted);
+      }
+      label span {
+        display: block;
+        font-weight: 600;
+        color: #f8fbff;
+        margin-bottom: 0.35rem;
+      }
+      input[type="text"],
+      input[type="url"],
+      select,
+      textarea {
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(3, 5, 17, 0.8);
+        padding: 0.85rem 1rem;
+        color: #f8fbff;
+        font-size: 1rem;
+        font-family: inherit;
+      }
+      textarea {
+        min-height: 160px;
+      }
+      .providers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .provider {
+        flex: 1 1 280px;
+        display: flex;
+        gap: 0.85rem;
+        padding: 1.1rem;
+        border-radius: 20px;
+        background: rgba(8, 10, 25, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        cursor: pointer;
+        transition: border 0.2s ease, transform 0.2s ease;
+      }
+      .provider.active {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+      .provider input {
+        margin-top: 0.35rem;
+      }
+      .prompt-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .prompt-buttons button {
+        border: none;
+        border-radius: 999px;
+        padding: 0.55rem 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+      .prompt-buttons button.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #05060f;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      button {
+        border: none;
+        border-radius: 16px;
+        padding: 0.9rem 1.4rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary {
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        color: #05060f;
+      }
+      button.secondary {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+      .models li {
+        margin-bottom: 0.8rem;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.85rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        letter-spacing: 0.04em;
+        background: rgba(111, 125, 255, 0.18);
+        color: var(--accent);
+        border: 1px solid rgba(64, 255, 163, 0.5);
+        margin-left: 0.4rem;
+      }
+      .tm-list {
+        margin-top: 1.5rem;
+      }
+      .tm-list ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .tm-list li {
+        padding: 0.85rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .tm-list li:last-child {
+        border-bottom: none;
+      }
+      .tm-list small {
+        display: block;
+        margin-top: 0.35rem;
+      }
+      pre#preview {
+        background: rgba(0, 0, 0, 0.45);
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 1rem;
+        overflow-x: auto;
+      }
+      .cta {
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        padding: 1rem 1.5rem;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+      .cta strong {
+        color: #fff;
+      }
+      footer {
+        text-align: center;
+        margin-top: 1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <p style="text-transform: uppercase; letter-spacing: 0.25em; font-size: 0.8rem; color: var(--accent)">
+          OTTCOUTURE.EU — ENTERPRISE OPENCORE
+        </p>
+        <h1>Self-Host Deck für OTTCOPS</h1>
+        <p>
+          Diese Seite bündelt alle Einstellungen für das OPENCORE Community Modell: Providerwahl, Systemprompts, TM-Depot und
+          Netzwerkfreigaben. Fokus: saubere Workflows für Cannabis-Analysen, ohne Marketing-Sprache.
+        </p>
+        <p>
+          Rechte & Betrieb liegen bei <strong>ottcouture.eu</strong>. Support bitte an <strong>otcdmin@outlook.com</strong>,
+          Instagram <strong>@ottcouture.eu</strong> oder Discord
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener" style="color: var(--accent)">
+            discord.gg/GMMSqePfPh
+          </a>
+          .
+        </p>
+        <div class="actions">
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">Discord beitreten</a>
+          <a href="/" style="background: rgba(255, 255, 255, 0.2); color: #fff">Zurück zur Analyse</a>
+        </div>
+      </header>
+
+      <section class="card">
+        <h2>1. Anbieter auswählen</h2>
+        <div class="providers" id="provider-group">
+          <label class="provider" data-provider="openai">
+            <input type="radio" name="provider" value="openai" checked />
+            <div>
+              <strong>OpenAI Cloud Vision</strong>
+              <p>Stabiles Hosting, Vision-LLMs wie <code>gpt-4.1-mini</code>. Kein lokales Setup nötig.</p>
+            </div>
+          </label>
+          <label class="provider" data-provider="ollama">
+            <input type="radio" name="provider" value="ollama" />
+            <div>
+              <strong>Ollama (Self-Hosted)</strong>
+              <p>Nutze unsere empfohlenen Modelle auf deinem Rechner oder Edge-Server, Vision aktivieren.</p>
+            </div>
+          </label>
+          <label class="provider" data-provider="lmstudio">
+            <input type="radio" name="provider" value="lmstudio" />
+            <div>
+              <strong>LM Studio API</strong>
+              <p>Starte den API Server, kopiere die Base URL und wähle ein Vision-taugliches Modell.</p>
+            </div>
+          </label>
+        </div>
+        <div class="grid two" style="margin-top: 1.5rem">
+          <label>
+            <span>API Base URL</span>
+            <input id="api-base" type="url" placeholder="https://127.0.0.1:11434" />
+            <small>Für OpenAI leer lassen. Für Self-Host den lokalen Endpoint eintragen.</small>
+          </label>
+          <label>
+            <span>Model Name</span>
+            <input id="model-name" type="text" placeholder="phi3.5-vision-mini" />
+            <small>z. B. Granite Vision 3B oder LLaVA-Phi-3 Mini.</small>
+          </label>
+          <label>
+            <span>API Key (optional)</span>
+            <input id="api-key" type="text" placeholder="Falls dein lokaler Server Auth nutzt" />
+          </label>
+          <label>
+            <span>Vision-Unterstützung</span>
+            <select id="vision-capable">
+              <option value="yes">Direkte Bild-Prompts</option>
+              <option value="manual">Bild wird vorab verarbeitet</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>2. Cannabis System Prompts</h2>
+        <p class="cta">
+          Die Presets liefern strukturierte Ausgangsprompts für Trichome-, Terpen- und Health-Analysen. Sie sind bewusst
+          knapp formuliert und lassen sich bei Bedarf erweitern.
+        </p>
+        <div class="prompt-buttons" id="prompt-buttons"></div>
+        <textarea id="prompt-text"></textarea>
+      </section>
+
+      <section class="card">
+        <h2>3. Vision-Modelle mit geringem Ressourcenbedarf</h2>
+        <ul class="models">
+          <li>
+            <strong>Phi-3.5 Vision Mini (~4.5 GB)</strong>
+            Läuft auf 8 GB VRAM/CPU, gut für schnelle Resin-Maps und generelle Strain-Spekulationen.
+          </li>
+          <li>
+            <strong>LLaVA-Phi-3 Mini (~5 GB)</strong>
+            Findet Leaf-Glitches und Fremdkörper sehr zuverlässig. Ideal für Ollama & LM Studio.
+          </li>
+          <li>
+            <strong>Granite Vision 3B (~3.8 GB)</strong>
+            Effizient auf Edge-Geräten, liefert solide Strain-Cluster ohne viel VRAM.
+          </li>
+          <li>
+            <strong>Bark-LLM Vision 7B (~7.2 GB)</strong>
+            Für längere JSON-Reports mit Batch-Verarbeitung in LM Studio (Q4_K_M empfohlen).
+          </li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2>4. Tipps für Ollama &amp; LM Studio</h2>
+        <div class="grid two">
+          <div>
+            <h3>Ollama</h3>
+            <ul>
+              <li><code>ollama pull phi3.5-vision-mini</code> oder Granite Vision Q4 ziehen.</li>
+              <li>In der <code>Modelfile</code> <code>PARAMETER vision true</code> und <code>num_ctx 4096+</code>.</li>
+              <li>Server mit <code>OLLAMA_ORIGINS=*</code> für lokale Tools freigeben.</li>
+              <li>HTTP Endpoint: <code>POST /api/chat</code> mit JSON Payload wie im Preview unten.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>LM Studio</h3>
+            <ul>
+              <li>API Server starten, Vision Support aktivieren, Port merken (Standard 1234).</li>
+              <li>Bei schwacher GPU Q4 oder Q5 Quantisierung wählen, CPU Offloading aktivieren.</li>
+              <li>Optional Token setzen und hier eintragen, wenn Auth nötig.</li>
+              <li>Für Multi-User Deployments Reverse Proxy mit HTTPS davor schalten.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="tm-depot">
+        <h2>5. OTTCOUTURE Teachable Machine Depot</h2>
+        <p>
+          ZIP hochladen (entweder TFJS mit <code>metadata.json</code>/<code>model.json</code>/<code>weights.bin</code> oder Keras mit
+          <code>keras_model.h5</code> + <code>labels.txt</code>), Typ wählen und wir pinnen das Paket unter <code>/TM-models</code>. Die Modelle
+          stehen anschließend im Analyzer sowie im OTTO-Chat zur Auswahl und bleiben bei <strong>ottcouture.eu</strong> gebrandet.
+        </p>
+        <div class="grid two">
+          <label>
+            <span>Modellname</span>
+            <input id="tm-name" type="text" placeholder="z. B. Frosted Gelato V1" />
+          </label>
+          <label>
+            <span>Kategorie</span>
+            <select id="tm-type">
+              <option value="trichome">Trichomen Analyse</option>
+              <option value="health">Health &amp; Leaf Safety</option>
+            </select>
+          </label>
+          <label>
+            <span>ZIP Upload</span>
+            <input id="tm-file" type="file" accept=".zip" />
+            <small>Struktur: TFJS (metadata.json/model.json/weights.bin) oder Keras (keras_model.h5 + labels.txt [+ optional metadata.json]).</small>
+          </label>
+          <label>
+            <span>Community Reminder</span>
+            <textarea readonly style="min-height: 120px">
+Feedback? otcdmin@outlook.com · Insta @ottcouture.eu · Discord discord.gg/GMMSqePfPh. Wir pushen die besten Builds ins nächste Release.
+            </textarea>
+          </label>
+        </div>
+        <div class="actions" style="margin-top: 1rem">
+          <button class="primary" id="tm-upload-btn">ZIP installieren</button>
+          <button class="secondary" id="tm-refresh-btn" type="button">Modelle aktualisieren</button>
+          <button class="secondary" id="tm-clear-default" type="button">Standard zurücksetzen</button>
+        </div>
+        <p id="tm-status" class="cta" style="display: none"></p>
+        <p id="tm-default-note" class="cta"></p>
+        <div class="tm-list">
+          <h3>Installierte OTTCOPS TM Modelle</h3>
+          <ul id="tm-models">
+            <li>Lade die Übersicht …</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card" id="network-card">
+        <h2>6. WiFi Broadcast &amp; ottcolab.local</h2>
+        <p>
+          Damit jedes Device im selben WLAN sofort <code>ottcolab.local</code> erreicht, announcen wir via mDNS einen Hostnamen.
+          Dieser Mode gehört komplett zu <strong>ottcouture.eu</strong>; Feedback an otcdmin@outlook.com oder über
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+        </p>
+        <div class="grid two">
+          <label>
+            <span>Hostname (.local)</span>
+            <input id="mdns-host" type="text" placeholder="ottcolab.local" />
+            <small>Wir normalisieren auf .local – funktioniert auf macOS, Windows, Linux &amp; iOS/Android.</small>
+          </label>
+          <label>
+            <span>Port</span>
+            <input id="mdns-port" type="number" min="1" max="65535" placeholder="8000" />
+            <small>Gleicher Port wie dein Uvicorn-Server. Standard 8000.</small>
+          </label>
+        </div>
+        <div class="actions" style="margin-top: 1rem">
+          <button class="primary" id="mdns-start" type="button">Broadcast aktivieren</button>
+          <button class="secondary" id="mdns-stop" type="button">Stoppen</button>
+        </div>
+        <p class="cta" id="mdns-status">Status: lädt …</p>
+        <p class="cta">
+          Technischer Hinweis: Wir announcen `_http._tcp` via <code>zeroconf</code>. Bitte sicherstellen, dass
+          <code>pip install zeroconf</code> ausgeführt wurde, sonst kann der Broadcast nicht starten.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2>7. Einstellungen speichern</h2>
+        <p>
+          Wir speichern alles nur lokal unter <code>localStorage.cannabisLLMConfig</code>. Kopiere den Dump nach
+          Bedarf in andere OTTCOPS Instanzen.
+        </p>
+        <div class="actions">
+          <button class="primary" id="save-btn">Speichern</button>
+          <button class="secondary" id="reset-btn">Zurücksetzen</button>
+          <a
+            href="/"
+            style="text-decoration: none; padding: 0.85rem 1.25rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.15); color: #fff"
+            >Zur Analyseoberfläche</a
+          >
+        </div>
+        <pre id="preview"></pre>
+        <p class="cta">
+          Feedback & Support: <strong>otcdmin@outlook.com</strong>, Insta <strong>@ottcouture.eu</strong>, Discord
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+        </p>
+      </section>
+
+      <footer>
+        © OTTCOUTURE OpenCore — Alle Rechte liegen bei
+        <a href="https://ottcouture.eu" target="_blank" rel="noopener">ottcouture.eu</a>. Discord:
+        <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">GMMSqePfPh</a>.
+      </footer>
+    </div>
+
+    <script>
+      const PROMPTS = [
+        {
+          id: "potency",
+          label: "Trichome Heatmap",
+          text:
+            "Analysiere sichtbare Trichome, Harzflächen und Farbverläufe. Erstelle ein JSON mit den Keys resin_density (Prozent), maturity_score (0-100) und observations[] für kurze Stichpunkte.",
+        },
+        {
+          id: "terpen",
+          label: "Terpen Stack",
+          text:
+            "Leite aus Farbe, Struktur und Kristallen mögliche Terpen-Cluster ab. JSON-Struktur: dominant_terps[], aroma_tags[], pairing_notes.",
+        },
+        {
+          id: "contaminants",
+          label: "Glitch Hunt",
+          text:
+            "Scanne nach Fremdkörpern, Schimmel oder Blattstress. JSON-Ausgabe mit severity_scores, detected_artifacts und recommended_actions.",
+        },
+        {
+          id: "compliance",
+          label: "Drop Dossier",
+          text:
+            "Dokumentiere sichtbare Merkmale und Verpackungsdetails für ein Sammler-Briefing. JSON-Felder: meta, packaging, release_notes.",
+        },
+      ];
+
+      const providerGroup = document.getElementById("provider-group");
+      const apiBaseInput = document.getElementById("api-base");
+      const modelInput = document.getElementById("model-name");
+      const apiKeyInput = document.getElementById("api-key");
+      const visionSelect = document.getElementById("vision-capable");
+      const promptButtons = document.getElementById("prompt-buttons");
+      const promptText = document.getElementById("prompt-text");
+      const saveBtn = document.getElementById("save-btn");
+      const resetBtn = document.getElementById("reset-btn");
+      const preview = document.getElementById("preview");
+      const tmNameInput = document.getElementById("tm-name");
+      const tmTypeSelect = document.getElementById("tm-type");
+      const tmFileInput = document.getElementById("tm-file");
+      const tmUploadBtn = document.getElementById("tm-upload-btn");
+      const tmRefreshBtn = document.getElementById("tm-refresh-btn");
+      const tmStatus = document.getElementById("tm-status");
+      const tmList = document.getElementById("tm-models");
+      const tmDefaultNote = document.getElementById("tm-default-note");
+      const tmClearBtn = document.getElementById("tm-clear-default");
+      const mdnsHostInput = document.getElementById("mdns-host");
+      const mdnsPortInput = document.getElementById("mdns-port");
+      const mdnsStatus = document.getElementById("mdns-status");
+      const mdnsStartBtn = document.getElementById("mdns-start");
+      const mdnsStopBtn = document.getElementById("mdns-stop");
+
+      function setActiveProvider(value) {
+        providerGroup.querySelectorAll(".provider").forEach((el) => {
+          el.classList.toggle("active", el.dataset.provider === value);
+          const input = el.querySelector("input");
+          input.checked = el.dataset.provider === value;
+        });
+      }
+
+      function renderPromptButtons(activeId) {
+        promptButtons.innerHTML = "";
+        PROMPTS.forEach((prompt) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = prompt.label;
+          button.classList.toggle("active", prompt.id === activeId);
+          button.addEventListener("click", () => {
+            promptText.value = prompt.text;
+            renderPromptButtons(prompt.id);
+            updatePreview();
+          });
+          promptButtons.appendChild(button);
+        });
+      }
+
+      function getConfig() {
+        return {
+          provider: providerGroup.querySelector('input[name="provider"]:checked').value,
+          apiBase: apiBaseInput.value,
+          model: modelInput.value,
+          apiKey: apiKeyInput.value,
+          vision: visionSelect.value,
+          systemPrompt: promptText.value,
+        };
+      }
+
+      function applyConfig(config) {
+        setActiveProvider(config.provider || "openai");
+        apiBaseInput.value = config.apiBase || "";
+        modelInput.value = config.model || "";
+        apiKeyInput.value = config.apiKey || "";
+        visionSelect.value = config.vision || "yes";
+        promptText.value = config.systemPrompt || PROMPTS[0].text;
+        renderPromptButtons(
+          PROMPTS.find((p) => p.text === promptText.value)?.id || PROMPTS[0].id
+        );
+        updatePreview();
+      }
+
+      function updatePreview() {
+        const config = getConfig();
+        preview.textContent = JSON.stringify(config, null, 2);
+      }
+
+      function formatModelType(type) {
+        return type === "health" ? "Health & Leaf" : "Trichomen";
+      }
+
+      function setTmStatus(message, isError = false) {
+        if (!tmStatus) return;
+        tmStatus.style.display = "block";
+        tmStatus.style.borderColor = isError ? "#ff8181" : "rgba(255,255,255,0.2)";
+        tmStatus.textContent = message;
+      }
+
+      async function refreshTmModels() {
+        if (!tmList) return;
+        tmList.innerHTML = "<li>lädt …</li>";
+        try {
+          const response = await fetch("/tm-models");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const payload = await response.json();
+          const models = payload.models || [];
+          if (!models.length) {
+            tmList.innerHTML = "<li>Noch keine Community-Modelle gespeichert.</li>";
+            if (tmDefaultNote)
+              tmDefaultNote.textContent = "Standard: OPENCORE Referenz (sofern TEACHABLE_MODEL_PATH gesetzt ist).";
+            if (tmClearBtn) tmClearBtn.disabled = true;
+            return;
+          }
+          tmList.innerHTML = "";
+          models.forEach((model) => {
+            const li = document.createElement("li");
+            const added = model.added ? new Date(model.added).toLocaleString() : "n/a";
+            const label = document.createElement("div");
+            label.innerHTML = `<strong>${model.name}</strong> <span class="pill">${formatModelType(
+              model.type
+            )}</span>`;
+            const meta = document.createElement("small");
+            const strainInfo = model.metadata?.labels?.join ? model.metadata.labels.join(", ") : "–";
+            meta.innerHTML = `Pfad: ${model.path}<br/>Labels: ${strainInfo}<br/>Hinzugefügt: ${added}`;
+            const defaultButton = document.createElement("button");
+            defaultButton.type = "button";
+            defaultButton.className = model.is_default ? "primary" : "secondary";
+            defaultButton.textContent = model.is_default ? "Standard aktiv" : "Als Standard setzen";
+            defaultButton.disabled = model.is_default;
+            defaultButton.style.marginTop = "0.5rem";
+            defaultButton.addEventListener("click", () => setDefaultTmModel(model.id));
+            li.appendChild(label);
+            li.appendChild(meta);
+            li.appendChild(defaultButton);
+            tmList.appendChild(li);
+          });
+          const active = models.find((model) => model.is_default);
+          if (tmDefaultNote) {
+            tmDefaultNote.textContent = active
+              ? `Standard im Analyzer: ${active.name}`
+              : "Standard: OPENCORE Referenz (TEACHABLE_MODEL_PATH).";
+          }
+          if (tmClearBtn) tmClearBtn.disabled = !active;
+        } catch (error) {
+          tmList.innerHTML = "<li>Fehler beim Laden der Modelle.</li>";
+          if (tmDefaultNote) tmDefaultNote.textContent = "Standard konnte nicht ermittelt werden.";
+          if (tmClearBtn) tmClearBtn.disabled = true;
+          console.error("TM load", error);
+        }
+      }
+
+      async function setDefaultTmModel(modelId) {
+        if (!modelId) return;
+        setTmStatus("Standard wird aktualisiert …");
+        try {
+          const response = await fetch(`/tm-models/default/${modelId}`, { method: "POST" });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Standard konnte nicht gesetzt werden.");
+          }
+          setTmStatus("Standardmodell gespeichert.");
+          await refreshTmModels();
+        } catch (error) {
+          setTmStatus(error.message, true);
+        }
+      }
+
+      async function clearDefaultTmModel() {
+        setTmStatus("Standard wird zurückgesetzt …");
+        try {
+          const response = await fetch("/tm-models/default", { method: "DELETE" });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Zurücksetzen fehlgeschlagen.");
+          }
+          setTmStatus("Standard entfernt. Der Analyzer nutzt jetzt die OPENCORE Referenz oder das erste Modell.");
+          await refreshTmModels();
+        } catch (error) {
+          setTmStatus(error.message, true);
+        }
+      }
+
+      async function uploadTmModel() {
+        const file = tmFileInput.files[0];
+        if (!file) {
+          setTmStatus("Bitte zuerst eine ZIP-Datei auswählen.", true);
+          return;
+        }
+        const name = tmNameInput.value.trim() || file.name.replace(/\.zip$/i, "");
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("display_name", name);
+        formData.append("model_type", tmTypeSelect.value);
+        tmUploadBtn.disabled = true;
+        tmUploadBtn.textContent = "Wird hochgeladen…";
+        setTmStatus("Upload läuft …");
+        try {
+          const response = await fetch("/tm-models/upload", { method: "POST", body: formData });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Upload fehlgeschlagen");
+          }
+          setTmStatus("Modell erfolgreich gespeichert. Wir halten es unter /TM-models bereit.");
+          tmFileInput.value = "";
+          await refreshTmModels();
+        } catch (error) {
+          setTmStatus(error.message, true);
+        } finally {
+          tmUploadBtn.disabled = false;
+          tmUploadBtn.textContent = "ZIP installieren";
+        }
+      }
+
+      async function refreshNetworkStatus() {
+        if (!mdnsStatus) return;
+        mdnsStatus.textContent = "Status: lädt …";
+        try {
+          const response = await fetch("/network/status");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const payload = await response.json();
+          const status = payload.status || {};
+          const available = payload.mdns_available;
+          if (!available) {
+            mdnsStatus.textContent =
+              "zeroconf fehlt. Bitte 'pip install zeroconf' ausführen, damit ottcolab.local announced werden kann.";
+            if (mdnsStartBtn) mdnsStartBtn.disabled = true;
+            if (mdnsStopBtn) mdnsStopBtn.disabled = true;
+            return;
+          }
+          if (mdnsHostInput) mdnsHostInput.value = status.hostname || "ottcolab.local";
+          if (mdnsPortInput) mdnsPortInput.value = status.port || 8000;
+          if (status.enabled) {
+            mdnsStatus.innerHTML =
+              `Broadcast aktiv: <strong>${status.hostname}</strong> → ${status.ip || "?"}. URL: <code>${status.url}</code>`;
+            if (mdnsStopBtn) mdnsStopBtn.disabled = false;
+          } else {
+            mdnsStatus.textContent = "Noch nicht aktiv. Host jetzt announcen, damit jedes Device im WLAN zugreifen kann.";
+            if (mdnsStopBtn) mdnsStopBtn.disabled = true;
+          }
+          if (mdnsStartBtn) {
+            mdnsStartBtn.disabled = false;
+            mdnsStartBtn.textContent = status.enabled ? "Broadcast neu setzen" : "Broadcast aktivieren";
+          }
+        } catch (error) {
+          mdnsStatus.textContent = "Status konnte nicht geladen werden.";
+          console.error("Network status", error);
+        }
+      }
+
+      async function startNetworkBroadcast() {
+        if (!mdnsHostInput || !mdnsPortInput) return;
+        const hostname = mdnsHostInput.value.trim() || "ottcolab.local";
+        const port = parseInt(mdnsPortInput.value, 10) || 8000;
+        if (mdnsStartBtn) {
+          mdnsStartBtn.disabled = true;
+          mdnsStartBtn.textContent = "Announcen …";
+        }
+        if (mdnsStatus) {
+          mdnsStatus.textContent = "Broadcast wird aktiviert …";
+        }
+        try {
+          const response = await fetch("/network/announce", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hostname, port }),
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Broadcast fehlgeschlagen");
+          }
+          await refreshNetworkStatus();
+        } catch (error) {
+          if (mdnsStatus) mdnsStatus.textContent = error.message;
+          console.error("Broadcast", error);
+        } finally {
+          if (mdnsStartBtn) {
+            mdnsStartBtn.disabled = false;
+            mdnsStartBtn.textContent = "Broadcast aktivieren";
+          }
+        }
+      }
+
+      async function stopNetworkBroadcast() {
+        if (mdnsStopBtn) mdnsStopBtn.disabled = true;
+        if (mdnsStatus) mdnsStatus.textContent = "Broadcast wird deaktiviert …";
+        try {
+          await fetch("/network/announce", { method: "DELETE" });
+          await refreshNetworkStatus();
+        } catch (error) {
+          if (mdnsStatus) mdnsStatus.textContent = "Broadcast konnte nicht gestoppt werden.";
+          console.error("Broadcast stop", error);
+        }
+      }
+
+      providerGroup.addEventListener("change", (event) => {
+        if (event.target.name === "provider") {
+          setActiveProvider(event.target.value);
+          if (event.target.value === "openai") {
+            apiBaseInput.value = "";
+            apiBaseInput.placeholder = "https://api.openai.com/v1";
+            modelInput.placeholder = "gpt-4.1-mini";
+          } else if (event.target.value === "ollama") {
+            apiBaseInput.placeholder = "http://127.0.0.1:11434";
+            modelInput.placeholder = "phi3.5-vision-mini";
+          } else {
+            apiBaseInput.placeholder = "http://127.0.0.1:1234/v1";
+            modelInput.placeholder = "granite-vision-3b-q4";
+          }
+          updatePreview();
+        }
+      });
+
+      [apiBaseInput, modelInput, apiKeyInput, visionSelect, promptText].forEach((el) =>
+        el.addEventListener("input", updatePreview)
+      );
+
+      saveBtn.addEventListener("click", () => {
+        const config = getConfig();
+        localStorage.setItem("cannabisLLMConfig", JSON.stringify(config));
+        updatePreview();
+        saveBtn.textContent = "Gespeichert";
+        setTimeout(() => (saveBtn.textContent = "Speichern"), 1400);
+      });
+
+      resetBtn.addEventListener("click", () => {
+        localStorage.removeItem("cannabisLLMConfig");
+        applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
+      });
+
+      const stored = localStorage.getItem("cannabisLLMConfig");
+      if (stored) {
+        try {
+          applyConfig(JSON.parse(stored));
+        } catch (error) {
+          console.warn("Fehler beim Laden der Config", error);
+          applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
+        }
+      } else {
+        applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
+      }
+
+      if (tmUploadBtn) {
+        tmUploadBtn.addEventListener("click", uploadTmModel);
+      }
+      if (tmRefreshBtn) {
+        tmRefreshBtn.addEventListener("click", refreshTmModels);
+      }
+      if (tmClearBtn) {
+        tmClearBtn.addEventListener("click", clearDefaultTmModel);
+      }
+      refreshTmModels();
+
+      if (mdnsStartBtn) {
+        mdnsStartBtn.addEventListener("click", startNetworkBroadcast);
+      }
+      if (mdnsStopBtn) {
+        mdnsStopBtn.addEventListener("click", stopNetworkBroadcast);
+      }
+      refreshNetworkStatus();
+    </script>
+  </body>
+</html>

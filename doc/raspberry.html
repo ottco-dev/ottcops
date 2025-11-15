@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE · Raspberry-Pi-Grow-Guides</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f5f6fb;
+        color: #0c1524;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0f172a;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow: auto;
+      }
+      code {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Raspberry-Pi-Setup fürs Growzelt</h1>
+      <p>
+        Dieses Tutorial beschreibt, wie der OPENCORE Analyzer über einen Raspberry Pi direkt im Zelt montiert wird. Der Pi kann
+        sowohl Kameras betreiben als auch periodisch Bilder zum Analyzer schicken oder Video-Streams bereitstellen.
+      </p>
+    </header>
+
+    <section>
+      <h2>1. Hardware & Montage</h2>
+      <ul>
+        <li>Raspberry Pi 4 (4–8 GB RAM) oder Raspberry Pi 5.</li>
+        <li>Pi-Kamera (v2/v3) oder USB-Kamera mit IR-Filter.</li>
+        <li>Stativ oder 3D-gedruckte Halterung, um die Kamera auf Bud-Level auszurichten.</li>
+        <li>Wasserdichte Box + Kabeldurchführung, falls der Pi im Zelt sitzt.</li>
+      </ul>
+      <p><strong>Tipp:</strong> Kamera auf ca. 45° Winkel, Abstand 20–30 cm, damit Trichome und Schimmel sichtbar bleiben.</p>
+    </section>
+
+    <section>
+      <h2>2. Betriebssystem & Pakete</h2>
+      <pre><code># Raspberry Pi OS (64-bit) installieren
+sudo apt update && sudo apt upgrade -y
+sudo apt install python3-venv python3-pip ffmpeg git -y
+
+python3 -m venv ~/opencore-pi
+source ~/opencore-pi/bin/activate
+pip install requests pillow</code></pre>
+      <p>
+        Für lokale ML-Läufe auf dem Pi empfiehlt sich ein leichtes TM-Modell. Alternativ schickt der Pi nur Bilder an den
+        zentralen OPENCORE-Server.
+      </p>
+    </section>
+
+    <section>
+      <h2>3. Kamera einrichten</h2>
+      <h3>Pi-Kamera (libcamera)</h3>
+      <pre><code>libcamera-still -o /tmp/bud.jpg --autofocus-mode continuous --immediate --width 1920 --height 1080</code></pre>
+      <h3>USB/RTSP</h3>
+      <pre><code># USB-Kamera als MJPEG-Stream
+ffmpeg -f v4l2 -i /dev/video0 -vf scale=1280:720 -f mjpeg http://0.0.0.0:8090/feed1.ffm</code></pre>
+      <p>Die erzeugten URLs lassen sich direkt in der Stream-Orchestrierung (Snapshot oder Video) hinterlegen.</p>
+    </section>
+
+    <section>
+      <h2>4. Bilder an OPENCORE schicken</h2>
+      <pre><code>#!/usr/bin/env python3
+import requests
+from pathlib import Path
+from time import sleep
+
+API_BASE = "http://opencore-host:8000"
+MODEL_ID = "builtin"
+PROMPT = "Prüfe Bud Health"
+IMAGE_PATH = Path("/tmp/bud.jpg")
+
+while True:
+    # Bild aufnehmen
+    Path("/tmp").mkdir(exist_ok=True)
+    # Beispiel mit libcamera
+    # os.system("libcamera-still -o /tmp/bud.jpg --immediate -n")
+
+    if IMAGE_PATH.exists():
+        files = {"image": IMAGE_PATH.open("rb")}
+        data = {"prompt": PROMPT, "model_id": MODEL_ID, "analysis_mode": "ml"}
+        resp = requests.post(f"{API_BASE}/analyze", files=files, data=data, timeout=60)
+        print(resp.json())
+    sleep(30)
+</code></pre>
+      <p>
+        Für Batch-Uploads können mehrere Bilder gesammelt und anschließend per <code>/api/opencore/analyze-batch</code> gesendet
+        werden.
+      </p>
+    </section>
+
+    <section>
+      <h2>5. Stream-Modus mit Pi</h2>
+      <ol>
+        <li>Starte einen mjpg- oder RTSP-Server auf dem Pi (z. B. via ffmpeg).</li>
+        <li>Trage die URL in der Analyzer-Oberfläche ein (<code>http://pi:8090/snapshot.jpg</code> oder <code>rtsp://pi/stream</code>).</li>
+        <li>Setze Capture-Intervall (5 s) und Batch-Intervall (30 s). Der Server übernimmt den Rest.</li>
+      </ol>
+      <p>So lassen sich komplette Growzelte ohne permanente Uploads überwachen – die Frames bleiben im lokalen Netz.</p>
+    </section>
+
+    <section>
+      <h2>6. Automation & Alarmierung</h2>
+      <ul>
+        <li>Kombiniere den Pi mit <code>home_automation.html</code>, um Sensoren und Kamera-Befunde zu mergen.</li>
+        <li>Nutze die Share-API, um Reports an Discord/Slack zu verteilen.</li>
+        <li>Setze Systemd-Timer (<code>/etc/systemd/system/opencore-capture.service</code>), um Skripte zuverlässig zu starten.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Kontakt</h2>
+      <p>
+        Support zu Hardware oder Skripten über <strong>otcdmin@outlook.com</strong>, Instagram <strong>@ottcouture.eu</strong>
+        oder Discord <strong>discord.gg/GMMSqePfPh</strong>.
+      </p>
+    </section>
+  </body>
+</html>

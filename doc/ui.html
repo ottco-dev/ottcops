@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>UI-Verbesserungen · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        color: #0f172a;
+        background: #fdfdfd;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+      strong {
+        color: #0f172a;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>UI-Verbesserungen</h1>
+      <p>Das Frontend wurde erweitert, um Uploads und Ausgaben komfortabler zu gestalten.</p>
+      <nav>
+        <a href="/doc/index.html">Zurück</a>
+        <a href="/doc/debug.html">Debug</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Drag &amp; Drop</h2>
+      <ul>
+        <li>Dateien auf den markierten Bereich ziehen.</li>
+        <li>Der Bereich hebt sich farblich ab, solange Dateien darüber schweben.</li>
+        <li>Beim Loslassen werden die Dateien automatisch übernommen und in der Liste angezeigt.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Bild-Preview &amp; Zoom</h2>
+      <ul>
+        <li>Jedes ausgewählte Bild erhält ein Thumbnail mit Dateinamen.</li>
+        <li>Klick auf ein Thumbnail öffnet ein Modal mit großer Darstellung.</li>
+        <li>Im Modal steht ein Zoom-Slider (50–150&nbsp;%) zur Verfügung.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Theme-Switch</h2>
+      <ul>
+        <li>Toggle „Light/Dark Theme“ in der Kopfzeile.</li>
+        <li>Die Auswahl wird im Browser gespeichert und bei jedem Besuch wiederhergestellt.</li>
+        <li>Alle Karten, Buttons und Panels passen sich automatisch an.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>JSON-Fullscreen</h2>
+      <ul>
+        <li>Button „Fullscreen“ neben dem Ergebnis-Header.</li>
+        <li>Öffnet ein Overlay mit großem <code>&lt;pre&gt;</code>-Block für komplette Reports.</li>
+        <li>Schließen über das X-Icon oder ESC.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Analysemodus & Templates</h2>
+      <ul>
+        <li>Dropdown „Hybrid / Nur ML“ bestimmt, ob GPT angesprochen wird. ML-only erspart den Prompt und liefert nur die TM-JSON.</li>
+        <li>Prompt-Templates lassen sich speichern, löschen und in einer Liste verwalten (Browser-Storage).</li>
+        <li>Der Status der Modell-Auswahl (Depot oder Built-in) wird direkt unter dem Dropdown angezeigt.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Stream-Dashboard</h2>
+      <ul>
+        <li>Linke Karte: Formular für Snapshot- oder Video-Quellen inkl. Capture-/Batch-Intervallen.</li>
+        <li>Rechte Karte: Liste aktiver Streams mit JSON-, Trigger- und Stop-Buttons.</li>
+        <li>Alle 15 Sekunden aktualisiert sich die Liste automatisch. Bei Fehlern erscheint eine Meldung unter „Aktive Streams“.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Export & Teilen</h2>
+      <ul>
+        <li>Buttons für JSON-Download, PDF-Report und Share-Link sitzen direkt neben dem Ergebnis-Header.</li>
+        <li>PDF enthält Datum, Modell, Modus sowie pro Bild eine Kurzbeschreibung.</li>
+        <li>Share-Links speichern die JSON-Ausgabe serverseitig und liefern eine URL zum Viewer (<code>/share/&lt;id&gt;</code>).</li>
+      </ul>
+    </section>
+  </body>
+</html>
