@@ -14,6 +14,9 @@ OTTCOPS ist der von [ottcouture.eu](https://ottcouture.eu) betriebene Analyzer f
 - 🛠️ **Debug-Panel** mit Request-ID, Modellversion und Timings (UI-Toggle + `?debug=1`).
 - 🔐 **API-Token-Mode**: Eigene Base-URL + Token, inkl. Code-Beispielen.
 - 📤 **Export-Paket**: JSON-Download, PDF-Report sowie Share-Links über `/api/opencore/share` + Viewer (`/share/<id>`).
+- 🧷 **ML-only Analysemodus**: `analysis_mode=ml` liefert reine Teachable-Machine-JSONs ohne GPT-Laufzeit.
+- 🎥 **Stream-Orchestrierung**: Snapshot/RTSP-Quellen laufen als Hintergrundjobs (5 s Capture, 30 s Batch) und liefern automatische Reports.
+- 🔄 **Launch-Update-Check**: Bei jedem Start prüft das Backend gegen `github.com/methoxy000/ottcops` und bietet ein optionales `git pull` an.
 
 ## Installation im OTTCOUTURE Style
 ```bash
@@ -27,6 +30,8 @@ export OPENAI_API_KEY="sk-..."
 # Dev-Server starten
 uvicorn app:app --reload
 ```
+
+Beim Start führt der Server automatisch einen Git-Vergleich gegen `https://github.com/methoxy000/ottcops`. Wird ein neuer Commit gefunden, erscheint eine Konsolenabfrage („Jetzt aktualisieren?“). Die Eingabe `y` oder `yes` startet ein `git pull`, jede andere Antwort lässt die vorhandene Version aktiv. Setze `OTTC_SKIP_UPDATE_CHECK=1`, wenn der Check z. B. in CI-Pipelines übersprungen werden soll.
 
 1. Analyzer UI: `http://localhost:8000/`
 2. OTTO Grow Chat: `http://localhost:8000/completions`
@@ -63,10 +68,12 @@ Alle UI-Einstellungen landen im Browser (`localStorage.cannabisLLMConfig`). Die 
 - `GET /` – Analyzer Landing Page mit Modellauswahl
 - `GET /config` – Self-Host Konfigurator & TM-Depot
 - `GET /completions` – OTTO Grow Chat UI
-- `POST /analyze` – Bild + Prompt + optional `model_id`
+- `POST /analyze` – Bild + Prompt + optional `model_id` + `analysis_mode`
+- `POST /api/opencore/analyze-ml` – Alias für ML-only Calls (identisch zu `/analyze` mit `analysis_mode=ml`)
 - `POST /api/opencore/analyze-batch` – Multi-Bild-Analyse (FormData mit `files[]`)
 - `POST /api/opencore/share` & `GET /api/opencore/share/{id}` – JSON-Share-Service (`/share/{id}` liefert Viewer)
 - `POST /api/completions` – OTTO Chat Endpoint (`prompt` im JSON-Body)
+- `GET/POST/DELETE /api/opencore/streams*` – Verwaltung der Snapshot/Video-Streams inkl. Trigger-Endpoint
 - `GET /tm-models` – Registry + Defaultinformationen
 - `POST /tm-models/upload` – ZIP Upload (`file`, `model_type`, `display_name`)
 - `POST /tm-models/default/{model_id}` – setzt Standardmodell
@@ -84,6 +91,9 @@ Alle geforderten Feature-Guides liegen als statische HTML-Seiten vor und werden 
 - `doc/ui.html` – UI-Erweiterungen (Drag&Drop, Theme, Zoom, JSON-Fullscreen)
 - `doc/export.html` – JSON/PDF/Share-Export
 - `doc/home_automation.html` – Home-Automation Guide inkl. curl, Python, Node-RED, Home Assistant
+- `doc/streams.html` – Video- & Snapshot-Streams inkl. API-Aufrufen
+- `doc/models.html` – Teachable-Machine (Easy) und Label-Studio/YOLO (Pro) Workflows
+- `doc/raspberry.html` – Raspberry-Pi-Montage, Kamera-Setup und Edge-Scripting
 
 ## Projektstruktur
 ```

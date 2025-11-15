@@ -76,5 +76,32 @@
         <li>Schließen über das X-Icon oder ESC.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Analysemodus & Templates</h2>
+      <ul>
+        <li>Dropdown „Hybrid / Nur ML“ bestimmt, ob GPT angesprochen wird. ML-only erspart den Prompt und liefert nur die TM-JSON.</li>
+        <li>Prompt-Templates lassen sich speichern, löschen und in einer Liste verwalten (Browser-Storage).</li>
+        <li>Der Status der Modell-Auswahl (Depot oder Built-in) wird direkt unter dem Dropdown angezeigt.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Stream-Dashboard</h2>
+      <ul>
+        <li>Linke Karte: Formular für Snapshot- oder Video-Quellen inkl. Capture-/Batch-Intervallen.</li>
+        <li>Rechte Karte: Liste aktiver Streams mit JSON-, Trigger- und Stop-Buttons.</li>
+        <li>Alle 15 Sekunden aktualisiert sich die Liste automatisch. Bei Fehlern erscheint eine Meldung unter „Aktive Streams“.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Export & Teilen</h2>
+      <ul>
+        <li>Buttons für JSON-Download, PDF-Report und Share-Link sitzen direkt neben dem Ergebnis-Header.</li>
+        <li>PDF enthält Datum, Modell, Modus sowie pro Bild eine Kurzbeschreibung.</li>
+        <li>Share-Links speichern die JSON-Ausgabe serverseitig und liefern eine URL zum Viewer (<code>/share/&lt;id&gt;</code>).</li>
+      </ul>
+    </section>
   </body>
 </html>

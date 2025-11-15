@@ -48,6 +48,10 @@
         <li>Das Bild wird via HTTP an <code>/analyze</code> oder <code>/api/opencore/analyze-batch</code> gesendet.</li>
         <li>Die JSON-Antwort enthält Texte und Schlüsselwörter, auf deren Basis Automationen laufen.</li>
       </ol>
+      <p>
+        Für reine TM-Inferenz ohne LLM kann <code>analysis_mode=ml</code> gesetzt werden. Der Analyzer liefert dann nur die
+        Klassifikation und spart GPT-Latenz, ideal für Schwellenwerte oder schnelle Alerts.
+      </p>
     </section>
 
     <section>
@@ -55,7 +59,19 @@
       <pre><code>curl -X POST http://ottcolab.local:8000/analyze \
   -F "prompt=Pest-Detection" \
   -F "image=@/tmp/cam/latest.jpg" \
-  -F "model_id=builtin"</code></pre>
+  -F "model_id=builtin" \
+  -F "analysis_mode=ml"</code></pre>
+    </section>
+
+    <section>
+      <h2>Batch & Analyse-Modus</h2>
+      <p>Batch-Anfragen akzeptieren mehrere Dateien (<code>files[]</code>) und optional <code>analysis_mode</code>:</p>
+      <pre><code>curl -X POST http://ottcolab.local:8000/api/opencore/analyze-batch \
+  -F "prompt=Bag Appeal" \
+  -F "analysis_mode=hybrid" \
+  -F "files[]=@/data/cam1.jpg" \
+  -F "files[]=@/data/cam2.jpg"</code></pre>
+      <p>Hybrid liefert LLM-Texte, ML-only reduziert den Output auf Klassifikations-JSON.</p>
     </section>
 
     <section>
@@ -114,6 +130,15 @@ rest:
         message: "OPENCORE meldet Hinweise auf Schimmel im letzten Upload."
 </code></pre>
       <p>Die Logik basiert auf Textfeldern, nicht auf Scores.</p>
+    </section>
+
+    <section>
+      <h2>Streams & Scheduler</h2>
+      <p>
+        Wer Kameras dauerhaft anbinden möchte, nutzt die Stream-API (<code>/api/opencore/streams</code>). Ein POST mit Quelle,
+        Analysemodus und Intervallen erzeugt einen Hintergrundjob, der alle 30 Sekunden einen Batch-Report liefert. Details siehe
+        <a href="/doc/streams.html">Video &amp; Streams</a>.
+      </p>
     </section>
   </body>
 </html>

@@ -7,6 +7,7 @@ Required dependencies:
 """
 from __future__ import annotations
 
+import atexit
 import base64
 import contextlib
 import html
@@ -18,12 +19,15 @@ import re
 import secrets
 import socket
 import shutil
+import subprocess
 import tempfile
+import threading
 import time
 import uuid
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Sequence
 
 import numpy as np
@@ -32,6 +36,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
 from pydantic import BaseModel
+import requests
 
 try:
     import tensorflow as tf
@@ -41,6 +46,11 @@ except ImportError as exc:  # pragma: no cover - only triggered when TF missing
     ) from exc
 
 from openai import OpenAI
+
+try:  # pragma: no cover - optional dependency for camera capture
+    import cv2  # type: ignore
+except ImportError:  # pragma: no cover - gracefully degrade when OpenCV missing
+    cv2 = None
 
 try:  # pragma: no cover - optional dependency for network mode
     from zeroconf import ServiceInfo, Zeroconf
@@ -83,6 +93,9 @@ NETWORK_DEFAULT_CONFIG = {
     "ip": None,
     "url": None,
 }
+STREAM_CAPTURE_INTERVAL_DEFAULT = 5.0
+STREAM_BATCH_INTERVAL_DEFAULT = 30.0
+STREAM_BUFFER_MAX = 24
 
 _model_cache: Dict[str, tf.keras.Model] = {}
 _client: OpenAI | None = None
@@ -90,8 +103,11 @@ _network_zeroconf: Zeroconf | None = None
 _network_service: ServiceInfo | None = None
 _network_runtime_config: Dict[str, Any] = {}
 _app_settings: Dict[str, Any] = {}
+_stream_lock = threading.Lock()
 
 LOG_LEVEL = os.getenv("OTTC_LOG_LEVEL", "INFO").upper()
+UPSTREAM_REPO_URL = os.getenv("OTTC_REPO_URL", "https://github.com/methoxy000/ottcops.git")
+UPSTREAM_REPO_BRANCH = os.getenv("OTTC_REPO_BRANCH", "main")
 
 
 def _build_logger() -> logging.Logger:
@@ -104,6 +120,315 @@ def _build_logger() -> logging.Logger:
 
 
 logger = _build_logger()
+
+
+@dataclass
+class StreamJob:
+    stream_id: str
+    label: str
+    source_url: str
+    source_type: str
+    analysis_mode: str
+    prompt: str
+    model_id: Optional[str]
+    capture_interval: float = STREAM_CAPTURE_INTERVAL_DEFAULT
+    batch_interval: float = STREAM_BATCH_INTERVAL_DEFAULT
+    running: bool = False
+    frames: List[bytes] = field(default_factory=list)
+    last_result: Optional[Dict[str, Any]] = None
+    last_error: Optional[str] = None
+    last_capture_ts: float = 0.0  # epoch seconds for UI
+    last_batch_ts: float = 0.0  # epoch seconds for UI
+    last_capture_perf: float = 0.0  # perf counter for scheduling
+    last_batch_perf: float = 0.0
+    thread: Optional[threading.Thread] = None
+    model_entry: Optional[Dict[str, Any]] = None
+    video_capture: Any = None
+
+
+class StreamManager:
+    """Manage background capture jobs for snapshot/video sources."""
+
+    def __init__(self) -> None:
+        self.jobs: Dict[str, StreamJob] = {}
+        self.lock = threading.Lock()
+
+    def start_job(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        stream_id = payload.get("stream_id") or slugify(payload.get("label") or "stream")
+        with self.lock:
+            if stream_id in self.jobs:
+                raise HTTPException(status_code=400, detail="Stream-ID bereits vergeben.")
+            job = StreamJob(
+                stream_id=stream_id,
+                label=payload.get("label") or stream_id,
+                source_url=payload["source_url"],
+                source_type=payload.get("source_type", "snapshot"),
+                analysis_mode=payload.get("analysis_mode", "hybrid"),
+                prompt=payload.get("prompt", ""),
+                model_id=payload.get("model_id"),
+                capture_interval=float(payload.get("capture_interval", STREAM_CAPTURE_INTERVAL_DEFAULT)),
+                batch_interval=float(payload.get("batch_interval", STREAM_BATCH_INTERVAL_DEFAULT)),
+            )
+            job.model_entry = resolve_model_entry(job.model_id)
+            job.running = True
+            now_perf = time.perf_counter()
+            now_epoch = time.time()
+            job.last_batch_perf = now_perf
+            job.last_capture_perf = now_perf
+            job.last_batch_ts = now_epoch
+            job.last_capture_ts = now_epoch
+            if job.source_type == "video" and cv2 is None:
+                raise HTTPException(status_code=400, detail="OpenCV fehlt für Videoquellen.")
+            if job.source_type == "video" and cv2 is not None:
+                job.video_capture = cv2.VideoCapture(job.source_url)
+            thread = threading.Thread(target=self._run_job, args=(job,), daemon=True)
+            job.thread = thread
+            self.jobs[stream_id] = job
+        thread.start()
+        return self.serialize_job(job)
+
+    def stop_job(self, stream_id: str) -> None:
+        with self.lock:
+            job = self.jobs.get(stream_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Stream nicht gefunden.")
+            job.running = False
+            if job.video_capture is not None and cv2 is not None:
+                job.video_capture.release()
+            self.jobs.pop(stream_id, None)
+
+    def list_jobs(self) -> List[Dict[str, Any]]:
+        with self.lock:
+            return [self.serialize_job(job) for job in self.jobs.values()]
+
+    def get_job(self, stream_id: str) -> StreamJob:
+        with self.lock:
+            job = self.jobs.get(stream_id)
+            if not job:
+                raise HTTPException(status_code=404, detail="Stream nicht gefunden.")
+            return job
+
+    def trigger_now(self, stream_id: str) -> Dict[str, Any]:
+        job = self.get_job(stream_id)
+        self._process_batch(job)
+        return self.serialize_job(job)
+
+    def stop_all(self) -> None:
+        with self.lock:
+            ids = list(self.jobs.keys())
+        for stream_id in ids:
+            with contextlib.suppress(Exception):
+                self.stop_job(stream_id)
+
+    def serialize_job(self, job: StreamJob) -> Dict[str, Any]:
+        try:
+            model_meta = build_teachable_meta(job.model_entry or resolve_model_entry(job.model_id))
+        except HTTPException:
+            model_meta = {
+                "id": job.model_id or "unknown",
+                "name": "Unbekannt",
+                "type": "n/a",
+                "source": "registry",
+            }
+        return {
+            "stream_id": job.stream_id,
+            "label": job.label,
+            "source_url": job.source_url,
+            "source_type": job.source_type,
+            "analysis_mode": job.analysis_mode,
+            "capture_interval": job.capture_interval,
+            "batch_interval": job.batch_interval,
+            "last_capture_ts": job.last_capture_ts,
+            "last_batch_ts": job.last_batch_ts,
+            "running": job.running,
+            "last_error": job.last_error,
+            "last_result": job.last_result,
+            "model": model_meta,
+        }
+
+    def _run_job(self, job: StreamJob) -> None:  # pragma: no cover - background thread
+        while job.running:
+            now_perf = time.perf_counter()
+            try:
+                if now_perf - job.last_capture_perf >= job.capture_interval:
+                    frame = self._capture_frame(job)
+                    if frame:
+                        job.frames.append(frame)
+                        if len(job.frames) > STREAM_BUFFER_MAX:
+                            job.frames = job.frames[-STREAM_BUFFER_MAX:]
+                        job.last_capture_perf = now_perf
+                        job.last_capture_ts = time.time()
+                if job.frames and now_perf - job.last_batch_perf >= job.batch_interval:
+                    self._process_batch(job)
+                    job.last_batch_perf = now_perf
+                    job.last_batch_ts = time.time()
+                time.sleep(0.5)
+            except Exception as exc:
+                job.last_error = str(exc)
+                logger.exception("Stream %s Fehler: %s", job.stream_id, exc)
+                time.sleep(2)
+
+    def _capture_frame(self, job: StreamJob) -> Optional[bytes]:
+        if job.source_type == "snapshot":
+            response = requests.get(job.source_url, timeout=15)
+            if response.status_code != 200:
+                raise RuntimeError(f"Snapshot HTTP {response.status_code}")
+            return response.content
+        if job.source_type == "video":
+            if cv2 is None:
+                raise RuntimeError("OpenCV nicht verfügbar")
+            if job.video_capture is None:
+                job.video_capture = cv2.VideoCapture(job.source_url)
+            ret, frame = job.video_capture.read()
+            if not ret:
+                job.video_capture.release()
+                job.video_capture = cv2.VideoCapture(job.source_url)
+                ret, frame = job.video_capture.read()
+                if not ret:
+                    raise RuntimeError("Konnte Videoframe nicht lesen")
+            success, encoded = cv2.imencode(".jpg", frame)
+            if not success:
+                raise RuntimeError("Frame konnte nicht encodiert werden")
+            return encoded.tobytes()
+        raise RuntimeError(f"Unbekannter source_type {job.source_type}")
+
+    def _process_batch(self, job: StreamJob) -> None:
+        if not job.frames:
+            return
+        frames = job.frames[:]
+        job.frames.clear()
+        model_entry = job.model_entry or resolve_model_entry(job.model_id)
+        items: List[Dict[str, Any]] = []
+        total_model_ms = 0.0
+        total_llm_ms = 0.0
+        for idx, frame in enumerate(frames, start=1):
+            if job.analysis_mode == "ml":
+                classification, timings = perform_ml_only(frame, model_entry)
+                payload = build_ml_payload(classification, model_entry, timings)
+                total_model_ms += timings["model_ms"]
+                items.append({"image_id": f"{job.stream_id}-{idx}", "analysis": payload})
+            else:
+                prompt = job.prompt or "Automatisierter Stream-Report"
+                classification, gpt_response, timings = perform_analysis(prompt, frame, model_entry)
+                payload = build_analysis_payload(classification, gpt_response, model_entry, timings)
+                total_model_ms += timings["model_ms"]
+                total_llm_ms += timings["llm_ms"]
+                items.append({"image_id": f"{job.stream_id}-{idx}", "analysis": payload})
+        if not items:
+            return
+        summary_text = (
+            summarize_ml_items(items)
+            if job.analysis_mode == "ml"
+            else summarize_batch(job.prompt or "Stream-Auswertung", items)
+        )
+        job.last_result = {
+            "status": "ok",
+            "summary": {"text": summary_text},
+            "items": items,
+            "analysis_mode": job.analysis_mode,
+            "teachable_model": build_teachable_meta(model_entry),
+            "debug": {
+                "timings": {
+                    "model_ms": round(total_model_ms, 2),
+                    "llm_ms": round(total_llm_ms, 2),
+                    "total_ms": round(total_model_ms + total_llm_ms, 2),
+                }
+            },
+            "captured": datetime.utcnow().isoformat() + "Z",
+        }
+
+
+stream_manager = StreamManager()
+atexit.register(stream_manager.stop_all)
+
+
+def _run_git_command(args: Sequence[str]) -> tuple[int, str, str]:
+    """Execute a git command and return (returncode, stdout, stderr)."""
+
+    try:
+        proc = subprocess.run(
+            args,
+            cwd=str(BASE_DIR),
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+        return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
+    except FileNotFoundError:
+        return 1, "", "git executable not available"
+
+
+def _get_local_commit_hash() -> Optional[str]:
+    code, stdout, stderr = _run_git_command(["git", "rev-parse", "HEAD"])
+    if code == 0:
+        return stdout
+    logger.debug("Konnte lokalen Commit nicht bestimmen: %s", stderr)
+    return None
+
+
+def _get_remote_commit_hash() -> Optional[str]:
+    code, stdout, stderr = _run_git_command(
+        ["git", "ls-remote", UPSTREAM_REPO_URL, UPSTREAM_REPO_BRANCH]
+    )
+    if code == 0 and stdout:
+        return stdout.split()[0]
+    logger.debug("Konnte Remote-Commit nicht bestimmen: %s", stderr)
+    return None
+
+
+def _prompt_user_for_update(remote_hash: str) -> bool:
+    """Ask the operator whether an update should be pulled."""
+
+    prompt = (
+        f"Eine neue Version ({remote_hash[:7]}) ist verfügbar. Jetzt aktualisieren? [y/N]: "
+    )
+    try:
+        response = input(prompt)
+    except EOFError:
+        logger.info("Keine interaktive Eingabe verfügbar – Update wird übersprungen.")
+        return False
+    return response.strip().lower() in {"y", "yes", "j", "ja"}
+
+
+def _perform_git_update() -> None:
+    logger.info("Starte git pull von %s (%s)...", UPSTREAM_REPO_URL, UPSTREAM_REPO_BRANCH)
+    code, stdout, stderr = _run_git_command(
+        ["git", "pull", UPSTREAM_REPO_URL, UPSTREAM_REPO_BRANCH]
+    )
+    if code != 0:
+        logger.error("git pull fehlgeschlagen: %s", stderr or stdout)
+    else:
+        logger.info("Repository erfolgreich aktualisiert: %s", stdout)
+
+
+def ensure_latest_code_checked_out() -> None:
+    """Check GitHub for new commits and prompt for update before app start."""
+
+    if os.getenv("OTTC_SKIP_UPDATE_CHECK", "0") in {"1", "true", "True"}:
+        logger.info("Update-Check übersprungen (OTTC_SKIP_UPDATE_CHECK=1).")
+        return
+
+    local_hash = _get_local_commit_hash()
+    remote_hash = _get_remote_commit_hash()
+
+    if not local_hash or not remote_hash:
+        logger.info("Update-Check konnte nicht abgeschlossen werden (fehlende Git-Infos).")
+        return
+
+    if local_hash == remote_hash:
+        logger.info("OPENCORE Analyzer ist bereits auf dem neuesten Stand (%s).", local_hash[:7])
+        return
+
+    logger.info(
+        "Neue Version erkannt. Lokal %s, Remote %s.", local_hash[:7], remote_hash[:7]
+    )
+    if _prompt_user_for_update(remote_hash):
+        _perform_git_update()
+    else:
+        logger.info("Update abgelehnt – aktuelle Version bleibt aktiv.")
+
+
+ensure_latest_code_checked_out()
 
 app = FastAPI(
     title="Teachable Machine + GPT Analyzer",
@@ -131,6 +456,17 @@ class CompletionPayload(BaseModel):
 
 class SharePayload(BaseModel):
     payload: Dict[str, Any]
+
+
+class StreamCreatePayload(BaseModel):
+    label: Optional[str] = None
+    source_url: str
+    source_type: str = "snapshot"
+    analysis_mode: str = "hybrid"
+    prompt: Optional[str] = ""
+    model_id: Optional[str] = None
+    capture_interval: float = STREAM_CAPTURE_INTERVAL_DEFAULT
+    batch_interval: float = STREAM_BATCH_INTERVAL_DEFAULT
 
 
 def load_app_settings() -> Dict[str, Any]:
@@ -245,6 +581,18 @@ def build_analysis_payload(
     }
 
 
+def build_ml_payload(
+    classification: Dict[str, Any], model_entry: Dict[str, Any], timings: Dict[str, float]
+) -> Dict[str, Any]:
+    """Return a payload describing only the Teachable Machine inference."""
+
+    return {
+        "classification": classification,
+        "teachable_model": build_teachable_meta(model_entry),
+        "timings": timings,
+    }
+
+
 def perform_analysis(
     prompt: str, image_bytes: bytes, model_entry: Dict[str, Any]
 ) -> tuple[Dict[str, Any], str, Dict[str, float]]:
@@ -263,6 +611,16 @@ def perform_analysis(
         "total_ms": measure_elapsed_ms(total_start),
     }
     return classification, gpt_response, timings
+
+
+def perform_ml_only(image_bytes: bytes, model_entry: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, float]]:
+    """Execute only the Teachable Machine inference."""
+
+    total_start = time.perf_counter()
+    classification = classify_image(image_bytes, model_entry)
+    model_ms = measure_elapsed_ms(total_start)
+    timings = {"model_ms": model_ms, "llm_ms": 0.0, "total_ms": model_ms}
+    return classification, timings
 
 
 def summarize_batch(prompt: str, items: List[Dict[str, Any]]) -> str:
@@ -294,6 +652,27 @@ def summarize_batch(prompt: str, items: List[Dict[str, Any]]) -> str:
         logger.warning("Batch summary konnte nicht erstellt werden: %s", exc)
         fallback = " | ".join(context_lines)
         return f"Zusammenfassung (Fallback): {fallback[:1000]}"
+
+
+def summarize_ml_items(items: List[Dict[str, Any]]) -> str:
+    """Create a short summary purely from classification payloads."""
+
+    summaries = []
+    for idx, item in enumerate(items, start=1):
+        classification = item.get("analysis", {}).get("classification")
+        if not classification:
+            continue
+        label = classification.get("top_label") or "n/a"
+        confidence = classification.get("top_confidence")
+        if isinstance(confidence, (int, float)):
+            conf_display = f"{confidence:.2%}"
+        else:
+            conf_display = str(confidence)
+        summaries.append(f"Bild {idx}: {label} ({conf_display}).")
+    if not summaries:
+        return "Keine ML-Befunde verfügbar."
+    joined = " ".join(summaries)
+    return f"ML-Report: {joined}"
 
 
 def get_share_file_path(share_id: str) -> Path:
@@ -882,12 +1261,16 @@ async def upload_tm_model(
 
 @app.post("/api/opencore/analyze-batch", response_class=JSONResponse)
 async def analyze_batch(
-    prompt: str = Form(...),
+    prompt: str = Form(default=""),
     model_id: Optional[str] = Form(default=None),
     debug: Optional[str] = Form(default=None),
+    analysis_mode: str = Form(default="hybrid"),
     files: List[UploadFile] = File(..., alias="files[]"),
 ) -> JSONResponse:
-    if not prompt.strip():
+    normalized_mode = (analysis_mode or "hybrid").lower()
+    if normalized_mode not in {"hybrid", "ml"}:
+        raise HTTPException(status_code=400, detail="Ungültiger Analysemodus.")
+    if normalized_mode != "ml" and not prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt ist erforderlich.")
     if not files:
         raise HTTPException(status_code=400, detail="Mindestens eine Datei hochladen.")
@@ -900,8 +1283,12 @@ async def analyze_batch(
         data = await file.read()
         if not data:
             raise HTTPException(status_code=400, detail="Leere Datei übermittelt.")
-        classification, gpt_response, timings = perform_analysis(prompt, data, model_entry)
-        analysis_payload = build_analysis_payload(classification, gpt_response, model_entry, timings)
+        if normalized_mode == "ml":
+            classification, timings = perform_ml_only(data, model_entry)
+            analysis_payload = build_ml_payload(classification, model_entry, timings)
+        else:
+            classification, gpt_response, timings = perform_analysis(prompt, data, model_entry)
+            analysis_payload = build_analysis_payload(classification, gpt_response, model_entry, timings)
         items.append(
             {
                 "image_id": file.filename or f"image-{idx}",
@@ -909,10 +1296,15 @@ async def analyze_batch(
             }
         )
 
-    summary_text = summarize_batch(prompt, items)
+    summary_text = (
+        summarize_ml_items(items) if normalized_mode == "ml" else summarize_batch(prompt, items)
+    )
     aggregated_timings = {
         "model_ms": round(sum(item["analysis"]["timings"]["model_ms"] for item in items), 2),
-        "llm_ms": round(sum(item["analysis"]["timings"]["llm_ms"] for item in items), 2),
+        "llm_ms": round(
+            sum(item["analysis"]["timings"].get("llm_ms", 0.0) for item in items),
+            2,
+        ),
         "total_ms": round(sum(item["analysis"]["timings"]["total_ms"] for item in items), 2),
     }
     response_payload = {
@@ -920,10 +1312,11 @@ async def analyze_batch(
         "summary": {"text": summary_text},
         "items": items,
         "teachable_model": build_teachable_meta(model_entry),
+        "analysis_mode": normalized_mode,
         "debug": build_debug_payload(
             request_id,
             model_entry,
-            prompt,
+            prompt if normalized_mode != "ml" else "ML-only Batch",
             aggregated_timings,
             batch_items=len(items),
             debug_enabled=debug_flag,
@@ -935,14 +1328,18 @@ async def analyze_batch(
 @app.post("/analyze")
 async def analyze(
     image: UploadFile = File(...),
-    prompt: str = Form(...),
+    prompt: str = Form(default=""),
     model_id: Optional[str] = Form(default=None),
     debug: Optional[str] = Form(default=None),
+    analysis_mode: str = Form(default="hybrid"),
 ) -> JSONResponse:
-    """Endpoint that classifies an image and enriches the result with GPT."""
+    """Endpoint that classifies an image and optionally calls GPT."""
     if image is None:
         raise HTTPException(status_code=400, detail="Image file is required.")
-    if not prompt:
+    normalized_mode = (analysis_mode or "hybrid").lower()
+    if normalized_mode not in {"hybrid", "ml"}:
+        raise HTTPException(status_code=400, detail="Ungültiger Analysemodus.")
+    if normalized_mode != "ml" and not prompt:
         raise HTTPException(status_code=400, detail="Prompt is required.")
 
     request_id = generate_request_id()
@@ -953,17 +1350,40 @@ async def analyze(
         raise HTTPException(status_code=400, detail=f"Failed to read uploaded image: {exc}") from exc
 
     model_entry = resolve_model_entry(model_id)
-    classification, gpt_response, timings = perform_analysis(prompt, image_bytes, model_entry)
-    analysis_payload = build_analysis_payload(classification, gpt_response, model_entry, timings)
-    debug_payload = build_debug_payload(
-        request_id,
-        model_entry,
-        prompt,
-        timings,
-        batch_items=1,
-        debug_enabled=debug_flag,
-    )
-    return JSONResponse(content={**analysis_payload, "debug": debug_payload})
+    if normalized_mode == "ml":
+        classification, timings = perform_ml_only(image_bytes, model_entry)
+        analysis_payload = build_ml_payload(classification, model_entry, timings)
+        debug_payload = build_debug_payload(
+            request_id,
+            model_entry,
+            prompt or "ML-only",
+            timings,
+            batch_items=1,
+            debug_enabled=debug_flag,
+        )
+    else:
+        classification, gpt_response, timings = perform_analysis(prompt, image_bytes, model_entry)
+        analysis_payload = build_analysis_payload(classification, gpt_response, model_entry, timings)
+        debug_payload = build_debug_payload(
+            request_id,
+            model_entry,
+            prompt,
+            timings,
+            batch_items=1,
+            debug_enabled=debug_flag,
+        )
+    return JSONResponse(content={**analysis_payload, "analysis_mode": normalized_mode, "debug": debug_payload})
+
+
+@app.post("/api/opencore/analyze-ml", response_class=JSONResponse)
+async def analyze_ml_proxy(
+    image: UploadFile = File(...),
+    model_id: Optional[str] = Form(default=None),
+    debug: Optional[str] = Form(default=None),
+) -> JSONResponse:
+    """Dedicated alias for ML-only calls."""
+
+    return await analyze(image=image, prompt="", model_id=model_id, debug=debug, analysis_mode="ml")
 
 
 @app.post("/api/opencore/share", response_class=JSONResponse)
@@ -978,6 +1398,45 @@ async def create_share(payload: SharePayload) -> JSONResponse:
 async def load_share(share_id: str) -> JSONResponse:
     data = load_share_payload_from_disk(share_id)
     return JSONResponse({"share_id": share_id, "payload": data})
+
+
+@app.get("/api/opencore/streams", response_class=JSONResponse)
+async def list_streams() -> JSONResponse:
+    return JSONResponse({"streams": stream_manager.list_jobs()})
+
+
+@app.post("/api/opencore/streams", response_class=JSONResponse)
+async def create_stream(payload: StreamCreatePayload) -> JSONResponse:
+    source_type = (payload.source_type or "snapshot").lower()
+    analysis_mode = (payload.analysis_mode or "hybrid").lower()
+    if source_type not in {"snapshot", "video"}:
+        raise HTTPException(status_code=400, detail="source_type muss snapshot oder video sein.")
+    if analysis_mode not in {"hybrid", "ml"}:
+        raise HTTPException(status_code=400, detail="analysis_mode muss hybrid oder ml sein.")
+    if analysis_mode != "ml" and not (payload.prompt or "").strip():
+        raise HTTPException(status_code=400, detail="Prompt erforderlich für Hybrid-Modus.")
+    if payload.capture_interval < 1 or payload.batch_interval < 5:
+        raise HTTPException(status_code=400, detail="Intervalle zu klein.")
+    job = stream_manager.start_job({**payload.dict(), "source_type": source_type, "analysis_mode": analysis_mode})
+    return JSONResponse({"stream": job})
+
+
+@app.get("/api/opencore/streams/{stream_id}", response_class=JSONResponse)
+async def read_stream(stream_id: str) -> JSONResponse:
+    job = stream_manager.get_job(stream_id)
+    return JSONResponse({"stream": stream_manager.serialize_job(job)})
+
+
+@app.delete("/api/opencore/streams/{stream_id}", response_class=JSONResponse)
+async def delete_stream(stream_id: str) -> JSONResponse:
+    stream_manager.stop_job(stream_id)
+    return JSONResponse({"stream_id": stream_id, "status": "stopped"})
+
+
+@app.post("/api/opencore/streams/{stream_id}/trigger", response_class=JSONResponse)
+async def trigger_stream(stream_id: str) -> JSONResponse:
+    data = stream_manager.trigger_now(stream_id)
+    return JSONResponse({"stream": data})
 
 
 OTTO_SYSTEM_PROMPT = (

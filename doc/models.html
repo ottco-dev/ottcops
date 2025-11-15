@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE · ML-Modelle</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f6f7fb;
+        color: #08101f;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0f172a;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow: auto;
+      }
+      code {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+      }
+      ul {
+        padding-left: 1.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>ML-Modelle für den OPENCORE Analyzer</h1>
+      <p>
+        OPENCORE akzeptiert sowohl schnell trainierte Teachable-Machine-Modelle (Easy Mode) als auch professionelle Pipelines mit
+        Label Studio, YOLO und GPU-Training (Pro Mode). Dieses Dokument erklärt, wie Modelle vorbereitet, evaluiert und in das
+        TM-Depot hochgeladen werden.
+      </p>
+    </header>
+
+    <section>
+      <h2>Easy Mode · Teachable Machine</h2>
+      <ol>
+        <li>Öffne <a href="https://teachablemachine.withgoogle.com/" target="_blank" rel="noopener">Teachable Machine</a> und wähle "Image Project" → "Standard image model".</li>
+        <li>Lege Klassen an (z. B. Klar, Milchig, Amber, Schimmel) und füge pro Klasse Bilder oder kurze Video-Snippets hinzu.</li>
+        <li>Starte das Training direkt im Browser. Für Grow-Analysen funktionieren 100–200 Bilder pro Klasse bereits zuverlässig.</li>
+        <li>Exportiere als "TensorFlow → Keras" ZIP-Paket.</li>
+        <li>Lade das ZIP im Config-Hub (<code>/config</code>) hoch. Der Server entpackt automatisch nach <code>TM-models/&lt;slug&gt;/</code> und schreibt den Eintrag in <code>TM-models/registry.json</code>.</li>
+      </ol>
+      <p>Jedes Paket muss folgende Struktur besitzen:</p>
+      <pre><code>metadata.json
+model.json
+weights.bin</code></pre>
+      <p>
+        In <code>metadata.json</code> sollten die Klassennamen ("labels") gepflegt sein. Fehlen Einträge, erzeugt OPENCORE neutrale Namen
+        (class_1 …). Nach dem Upload kann das Modell direkt als Default gesetzt und im Analyzer ausgewählt werden.
+      </p>
+    </section>
+
+    <section>
+      <h2>Pro Mode · Label Studio, YOLO, GPU</h2>
+      <h3>1. Label Studio vorbereiten</h3>
+      <ul>
+        <li>Projekt in Label Studio erstellen (z. B. "Bud Health").</li>
+        <li>Label-Konfiguration: Checkboxen für "mold", "pest", "defoliation", "healthy" etc.</li>
+        <li>Bilder hochladen (RAW-Footage aus Grow, Labor, Makro-Objektive).</li>
+        <li>Annotationen exportieren (Format: YOLO oder COCO).</li>
+      </ul>
+
+      <h3>2. YOLOv8 Training</h3>
+      <pre><code># Python-Umgebung mit GPU (z. B. CUDA 12) aktivieren
+pip install ultralytics
+
+# Dataset aus Label Studio übernehmen
+# data.yaml beschreibt Klassen und Pfade
+ultralytics yolo detect train \
+  data=data.yaml \
+  model=yolov8m.pt \
+  epochs=80 \
+  imgsz=640 \
+  project=opencore_yolo \
+  name=bud_health</code></pre>
+      <p>
+        Nach dem Training liegt das beste Gewicht unter <code>runs/detect/bud_health/weights/best.pt</code>. Exportiere als TensorFlow/ONNX,
+        um später mit TensorFlow Serving kompatibel zu bleiben:
+      </p>
+      <pre><code>ultralytics yolo export model=runs/detect/bud_health/weights/best.pt format=tfjs</code></pre>
+
+      <h3>3. Keras/SavedModel erzeugen</h3>
+      <p>
+        Für OPENCORE wird ein klassisches Keras SavedModel benötigt. Entweder direkt aus TFJS konvertieren oder einen eigenen
+        Converter schreiben:
+      </p>
+      <pre><code>from ultralytics import YOLO
+import tensorflow as tf
+
+model = YOLO("runs/detect/bud_health/weights/best.pt")
+saved_model = model.export(format="saved_model")
+# SavedModel liegt im Unterordner 'best_saved_model/'</code></pre>
+      <p>
+        Packe das SavedModel in eine ZIP-Struktur mit <code>metadata.json</code>, die folgende Felder enthält:
+      </p>
+      <pre><code>{
+  "labels": ["healthy", "mold", "pest", "nutrient_issue"],
+  "input_shape": [1, 640, 640, 3],
+  "framework": "keras",
+  "source": "label-studio + yolo"
+}</code></pre>
+      <p>Das ZIP kann anschließend über den Config-Hub hochgeladen werden.</p>
+    </section>
+
+    <section>
+      <h2>Best Practices</h2>
+      <ul>
+        <li><strong>Daten:</strong> Nutze sowohl Tages- als auch Nachtaufnahmen. Unterschiedliche Weißabgleiche verbessern die Robustheit.</li>
+        <li><strong>Validierung:</strong> Prüfe Modelle lokal mit <code>python -m compileall app.py</code> + Test-Uploads, bevor sie in den Depot-Ordner wandern.</li>
+        <li><strong>Versionierung:</strong> Nutze sprechende Namen (z. B. <code>tm-budhealth-v2</code>). Der Analyzer zeigt diese Namen im Dropdown an.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Kontakt & Support</h2>
+      <p>
+        Rückfragen zu Modellformaten oder Performance? Schreibe an <strong>otcdmin@outlook.com</strong>, Instagram
+        <strong>@ottcouture.eu</strong> oder Discord <strong>discord.gg/GMMSqePfPh</strong>.
+      </p>
+    </section>
+  </body>
+</html>

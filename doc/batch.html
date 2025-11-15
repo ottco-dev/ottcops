@@ -58,6 +58,7 @@
 Content-Type: multipart/form-data
 
 prompt=&lt;text&gt;
+analysis_mode=hybrid   # oder ml
 model_id=&lt;optional&gt;
 files[]=@image1.jpg
 files[]=@image2.jpg</code></pre>
@@ -81,6 +82,7 @@ files[]=@image2.jpg</code></pre>
         <li><strong>Keine Dateien:</strong> Der Server liefert HTTP 400.</li>
         <li><strong>Ungültige Bilder:</strong> Upload wird verworfen, die Response enthält Hinweise im Debug-Bereich.</li>
         <li><strong>Timeout:</strong> Bei sehr vielen Bildern empfiehlt sich ein gestaffelter Upload.</li>
+        <li><strong>Falscher Modus:</strong> `analysis_mode` akzeptiert nur `hybrid` oder `ml`. Fehlende Prompts lösen im Hybrid-Modus HTTP 400 aus.</li>
       </ul>
     </section>
 

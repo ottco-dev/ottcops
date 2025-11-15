@@ -1,5 +1,6 @@
-// Central UI script for the OPENCORE Analyzer. Handles prompt templates, uploads, batch flows,
-// debug telemetry, token-mode routing and export utilities.
+// OPENCORE Analyzer front-end controller.
+// Handles prompt templates, ML-only vs. hybrid runs, batch uploads, token-mode routing,
+// export utilities and the automation stream dashboard.
 
 const PROMPT_TEMPLATES = [
   {
@@ -19,7 +20,7 @@ const PROMPT_TEMPLATES = [
   {
     id: "pest_detection",
     label: "Pest-Detection",
-    description: "Sucht nach sichtbaren Schädlingen oder Schadmustern.",
+    description: "Sucht nach sichtbaren Schädlingen oder typischen Schadmustern.",
     prompt:
       "Analysiere das Bild auf sichtbare Schädlinge oder typische Schadbilder und beschreibe die Befunde.",
   },
@@ -46,6 +47,10 @@ const state = {
   theme: "dark",
   lastResult: null,
   activeTab: "summary",
+  analysisMode: "hybrid",
+  streams: [],
+  streamTimer: null,
+  models: [],
 };
 
 const dom = {};
@@ -59,11 +64,15 @@ document.addEventListener("DOMContentLoaded", () => {
   applyDebugFromQuery();
   updatePreviewGrid();
   renderResultPlaceholder();
+  handleAnalysisModeChange();
+  loadStreams();
+  state.streamTimer = setInterval(loadStreams, 15000);
 });
 
 function cacheDom() {
   dom.form = document.getElementById("analyze-form");
   dom.modelSelect = document.getElementById("model-select");
+  dom.streamModel = document.getElementById("streamModel");
   dom.modelStatus = document.getElementById("model-status");
   dom.prompt = document.getElementById("prompt");
   dom.templateSelect = document.getElementById("template-select");
@@ -106,6 +115,19 @@ function cacheDom() {
   dom.closeImageModal = document.getElementById("closeImageModal");
   dom.zoomSlider = document.getElementById("zoomSlider");
   dom.fileStatus = document.getElementById("fileStatus");
+  dom.analysisMode = document.getElementById("analysisMode");
+  dom.analysisHint = document.getElementById("analysisHint");
+  dom.streamForm = document.getElementById("streamForm");
+  dom.streamName = document.getElementById("streamName");
+  dom.streamUrl = document.getElementById("streamUrl");
+  dom.streamSourceType = document.getElementById("streamSourceType");
+  dom.streamAnalysisMode = document.getElementById("streamAnalysisMode");
+  dom.streamPrompt = document.getElementById("streamPrompt");
+  dom.streamCaptureInterval = document.getElementById("streamCaptureInterval");
+  dom.streamBatchInterval = document.getElementById("streamBatchInterval");
+  dom.streamList = document.getElementById("streamList");
+  dom.streamStatus = document.getElementById("streamStatus");
+  dom.streamRefresh = document.getElementById("streamRefresh");
 }
 
 function initTheme() {
@@ -128,7 +150,7 @@ function initTemplates() {
   if (raw) {
     try {
       state.customTemplates = JSON.parse(raw) ?? [];
-    } catch (error) {
+    } catch {
       state.customTemplates = [];
     }
   }
@@ -180,18 +202,6 @@ function renderCustomTemplateList() {
   });
 }
 
-function removeCustomTemplate(id) {
-  state.customTemplates = state.customTemplates.filter((tpl) => tpl.id !== id);
-  persistCustomTemplates();
-  renderTemplateOptions();
-  renderCustomTemplateList();
-  showToast("Template entfernt.");
-}
-
-function persistCustomTemplates() {
-  localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(state.customTemplates));
-}
-
 function bindEvents() {
   dom.templateSelect.addEventListener("change", handleTemplateSelect);
   dom.saveTemplateBtn.addEventListener("click", () => openModal(dom.templateModal));
@@ -199,7 +209,6 @@ function bindEvents() {
   dom.confirmTemplate.addEventListener("click", saveCustomTemplate);
   dom.form.addEventListener("submit", handleAnalyzeSubmit);
   dom.imageInput.addEventListener("change", handleFileChange);
-  setupDropzone();
   dom.debugToggle.addEventListener("change", () => {
     state.debugEnabled = dom.debugToggle.checked;
   });
@@ -207,18 +216,22 @@ function bindEvents() {
   dom.closeApiModal.addEventListener("click", () => closeModal(dom.apiModal));
   dom.saveApiSettings.addEventListener("click", saveApiSettings);
   dom.resetApiSettings.addEventListener("click", resetApiSettings);
-  dom.jsonFullscreenBtn.addEventListener("click", openJsonFullscreen);
+  dom.jsonFullscreenBtn.addEventListener("click", () => openJsonFullscreen());
   dom.closeJsonFullscreen.addEventListener("click", () => closeModal(dom.jsonFullscreen));
   dom.jsonDownloadBtn.addEventListener("click", downloadJsonReport);
   dom.pdfExportBtn.addEventListener("click", generatePdfReport);
   dom.shareBtn.addEventListener("click", shareReport);
   dom.closeImageModal.addEventListener("click", () => closeModal(dom.imageModal));
   dom.zoomSlider.addEventListener("input", handleZoomChange);
+  dom.analysisMode.addEventListener("change", handleAnalysisModeChange);
+  dom.streamForm.addEventListener("submit", handleStreamSubmit);
+  dom.streamRefresh.addEventListener("click", loadStreams);
   window.addEventListener("keyup", (event) => {
     if (event.key === "Escape") {
       [dom.templateModal, dom.apiModal, dom.jsonFullscreen, dom.imageModal].forEach(closeModal);
     }
   });
+  setupDropzone();
 }
 
 function applyDebugFromQuery() {
@@ -227,6 +240,18 @@ function applyDebugFromQuery() {
   if (debug && ["1", "true"].includes(debug.toLowerCase())) {
     dom.debugToggle.checked = true;
     state.debugEnabled = true;
+  }
+}
+
+function handleAnalysisModeChange() {
+  state.analysisMode = dom.analysisMode.value;
+  const isMl = state.analysisMode === "ml";
+  dom.analysisHint.textContent = isMl
+    ? "ML-only benötigt keinen Prompt."
+    : "Hybrid kombiniert ML + GPT und benötigt einen Prompt.";
+  if (dom.prompt) {
+    dom.prompt.required = !isMl;
+    dom.prompt.placeholder = isMl ? "Optionaler Hinweis für das ML-Log" : "Beschreibe die gewünschte Analyse";
   }
 }
 
@@ -263,6 +288,18 @@ function saveCustomTemplate() {
   dom.templateDescription.value = "";
   closeModal(dom.templateModal);
   showToast("Template gespeichert.");
+}
+
+function persistCustomTemplates() {
+  localStorage.setItem(STORAGE_KEYS.TEMPLATES, JSON.stringify(state.customTemplates));
+}
+
+function removeCustomTemplate(id) {
+  state.customTemplates = state.customTemplates.filter((tpl) => tpl.id !== id);
+  persistCustomTemplates();
+  renderTemplateOptions();
+  renderCustomTemplateList();
+  showToast("Template entfernt.");
 }
 
 function setupDropzone() {
@@ -333,27 +370,12 @@ function loadModels() {
   apiRequest("/tm-models")
     .then((payload) => {
       const models = payload.models || [];
+      state.models = models;
       const hasBuiltin = payload.has_builtin;
       const defaultId = payload.default_model_id;
-      dom.modelSelect.innerHTML = "";
-      if (hasBuiltin) {
-        const option = document.createElement("option");
-        option.value = "builtin";
-        option.textContent = "OPENCORE Referenz (TEACHABLE_MODEL_PATH)";
-        dom.modelSelect.appendChild(option);
-      }
-      models.forEach((model) => {
-        const option = document.createElement("option");
-        option.value = model.id;
-        option.textContent = `${model.name} (${model.type})`;
-        dom.modelSelect.appendChild(option);
-      });
-      if (defaultId && models.some((model) => model.id === defaultId)) {
-        dom.modelSelect.value = defaultId;
-      } else if (hasBuiltin) {
-        dom.modelSelect.value = "builtin";
-      } else if (models.length) {
-        dom.modelSelect.value = models[0].id;
+      populateModelSelect(dom.modelSelect, models, hasBuiltin, defaultId);
+      if (dom.streamModel) {
+        populateModelSelect(dom.streamModel, models, hasBuiltin, defaultId, true);
       }
       dom.modelStatus.textContent = "Die Auswahl bestimmt das aktive Teachable-Machine-Paket.";
     })
@@ -365,9 +387,36 @@ function loadModels() {
     });
 }
 
+function populateModelSelect(selectEl, models, hasBuiltin, defaultId, optional = false) {
+  if (!selectEl) return;
+  selectEl.innerHTML = optional ? '<option value="">Standard verwenden</option>' : "";
+  if (hasBuiltin) {
+    const option = document.createElement("option");
+    option.value = "builtin";
+    option.textContent = "OPENCORE Referenz (TEACHABLE_MODEL_PATH)";
+    selectEl.appendChild(option);
+  }
+  models.forEach((model) => {
+    const option = document.createElement("option");
+    option.value = model.id;
+    option.textContent = `${model.name} (${model.type})`;
+    selectEl.appendChild(option);
+  });
+  if (!optional) {
+    if (defaultId && models.some((model) => model.id === defaultId)) {
+      selectEl.value = defaultId;
+    } else if (hasBuiltin) {
+      selectEl.value = "builtin";
+    } else if (models.length) {
+      selectEl.value = models[0].id;
+    }
+  }
+}
+
 async function handleAnalyzeSubmit(event) {
   event.preventDefault();
-  if (!dom.prompt.value.trim()) {
+  const prompt = dom.prompt.value.trim();
+  if (state.analysisMode !== "ml" && !prompt) {
     showToast("Prompt ist erforderlich.");
     return;
   }
@@ -378,7 +427,7 @@ async function handleAnalyzeSubmit(event) {
   dom.runStatus.textContent = "Analyse läuft …";
   dom.analyzeBtn.disabled = true;
   const formData = new FormData();
-  formData.append("prompt", dom.prompt.value.trim());
+  formData.append("prompt", prompt);
   const modelValue = dom.modelSelect.value;
   if (modelValue) {
     formData.append("model_id", modelValue);
@@ -386,7 +435,8 @@ async function handleAnalyzeSubmit(event) {
   if (state.debugEnabled) {
     formData.append("debug", "1");
   }
-  const endpoint = state.files.length > 1 ? "/api/opencore/analyze-batch" : "/analyze";
+  formData.append("analysis_mode", state.analysisMode);
+  let endpoint = state.files.length > 1 ? "/api/opencore/analyze-batch" : "/analyze";
   if (state.files.length > 1) {
     state.files.forEach((file) => formData.append("files[]", file));
   } else {
@@ -418,6 +468,7 @@ function handleResult(payload, elapsedMs) {
 }
 
 function normalizeResult(payload) {
+  if (!payload) return null;
   if (payload && Array.isArray(payload.items)) {
     return payload;
   }
@@ -432,14 +483,18 @@ function normalizeResult(payload) {
     ],
     teachable_model: payload.teachable_model || payload.items?.[0]?.analysis?.teachable_model,
     debug: payload.debug,
+    analysis_mode: payload.analysis_mode || payload.items?.[0]?.analysis_mode || "hybrid",
   };
   return wrapper;
 }
 
 function renderResultTabs(result) {
+  if (!result) {
+    renderResultPlaceholder();
+    return;
+  }
   dom.resultTabs.innerHTML = "";
-  const tabs = [];
-  tabs.push({ key: "summary", label: "Gesamt-Report" });
+  const tabs = [{ key: "summary", label: "Gesamt-Report" }];
   result.items.forEach((item, index) => {
     tabs.push({ key: `item-${index}`, label: item.image_id || `Bild ${index + 1}` });
   });
@@ -460,23 +515,50 @@ function renderResultTabs(result) {
 }
 
 function renderTabContent(result, key) {
+  if (!result) return;
   if (key === "summary") {
-    dom.resultDisplay.innerHTML = `<p>${result.summary?.text || "Keine Zusammenfassung vorhanden."}</p>`;
-  } else {
-    const index = Number(key.split("-")[1]);
-    const item = result.items[index];
-    if (!item) {
-      dom.resultDisplay.innerHTML = `<p class="disclaimer">Kein Eintrag gefunden.</p>`;
-    } else {
-      dom.resultDisplay.innerHTML = `
-        <h3>${item.image_id}</h3>
-        <p><strong>Modell:</strong> ${item.analysis?.teachable_model?.name || "OPENCORE"}</p>
-        <pre style="white-space: pre-wrap; font-family: 'Space Mono', monospace;">${
-          item.analysis?.gpt_response || ""
-        }</pre>
-      `;
-    }
+    const mode = result.analysis_mode || "hybrid";
+    dom.resultDisplay.innerHTML = `<p><strong>Modus:</strong> ${mode.toUpperCase()}</p><p>${
+      result.summary?.text || "Keine Zusammenfassung vorhanden."
+    }</p>`;
+    return;
   }
+  const index = Number(key.split("-")[1]);
+  const item = result.items[index];
+  if (!item) {
+    dom.resultDisplay.innerHTML = `<p class="disclaimer">Kein Eintrag gefunden.</p>`;
+    return;
+  }
+  const classificationHtml = renderClassification(item.analysis?.classification);
+  const gptHtml = item.analysis?.gpt_response
+    ? `<h4>LLM-Output</h4><pre style="white-space: pre-wrap; font-family: 'Space Mono', monospace;">${
+        item.analysis.gpt_response
+      }</pre>`
+    : `<p class="disclaimer">ML-only: Kein LLM-Text für dieses Bild.</p>`;
+  dom.resultDisplay.innerHTML = `
+    <h3>${item.image_id}</h3>
+    <p><strong>Modell:</strong> ${item.analysis?.teachable_model?.name || "OPENCORE"}</p>
+    ${classificationHtml}
+    ${gptHtml}
+  `;
+}
+
+function renderClassification(classification) {
+  if (!classification) return "";
+  const topConfidence = classification.top_confidence;
+  const topPercent = typeof topConfidence === "number" ? (topConfidence * 100).toFixed(2) : topConfidence;
+  const rows = (classification.all_predictions || [])
+    .map((pred) => {
+      const value = typeof pred.confidence === "number" ? (pred.confidence * 100).toFixed(2) + "%" : pred.confidence;
+      return `<li>${pred.label}: ${value}</li>`;
+    })
+    .join("");
+  return `
+    <div class="classification-block">
+      <strong>Top Label:</strong> ${classification.top_label} (${topPercent}%)
+      <ul>${rows}</ul>
+    </div>
+  `;
 }
 
 function renderJson(result) {
@@ -494,8 +576,9 @@ function renderDebug(debug, clientMs) {
   dom.debugPanel.innerHTML = `
     <strong>Request-ID:</strong> ${debug?.request_id || "n/a"}<br />
     <strong>Modell:</strong> ${debug?.model_name || "OPENCORE"} (${debug?.model_version || ""})<br />
-    <strong>Timings:</strong> Modell ${timings.model_ms || "?"} ms · LLM ${timings.llm_ms || "?"} ms · Gesamt ${timings.total_ms ||
-    "?"} ms<br />
+    <strong>Timings:</strong> Modell ${timings.model_ms || "?"} ms · LLM ${timings.llm_ms || "?"} ms · Gesamt ${
+    timings.total_ms || "?"
+  } ms<br />
     <strong>Client:</strong> ${clientMs || "?"} ms<br />
     <strong>Prompt:</strong> ${debug?.prompt_preview || "-"}
   `;
@@ -519,23 +602,23 @@ function openApiModal() {
 
 function loadApiSettings() {
   const raw = localStorage.getItem(STORAGE_KEYS.API_SETTINGS);
-  if (!raw) return { enabled: false };
+  if (!raw) return {};
   try {
-    return JSON.parse(raw) ?? { enabled: false };
-  } catch (error) {
-    return { enabled: false };
+    return JSON.parse(raw) ?? {};
+  } catch {
+    return {};
   }
 }
 
 function saveApiSettings() {
-  const settings = {
-    baseUrl: dom.apiBaseUrl.value.trim().replace(/\/$/, ""),
+  const payload = {
+    baseUrl: dom.apiBaseUrl.value.trim(),
     token: dom.apiToken.value.trim(),
     enabled: dom.apiModeEnabled.checked,
   };
-  localStorage.setItem(STORAGE_KEYS.API_SETTINGS, JSON.stringify(settings));
-  closeModal(dom.apiModal);
+  localStorage.setItem(STORAGE_KEYS.API_SETTINGS, JSON.stringify(payload));
   showToast("API-Einstellungen gespeichert.");
+  closeModal(dom.apiModal);
 }
 
 function resetApiSettings() {
@@ -543,15 +626,16 @@ function resetApiSettings() {
   dom.apiBaseUrl.value = "";
   dom.apiToken.value = "";
   dom.apiModeEnabled.checked = false;
-  showToast("API-Einstellungen zurückgesetzt.");
+  showToast("API-Einstellungen entfernt.");
 }
 
-function openJsonFullscreen() {
-  if (!state.lastResult) {
+function openJsonFullscreen(payload = null) {
+  const data = payload || state.lastResult;
+  if (!data) {
     showToast("Keine Analyse vorhanden.");
     return;
   }
-  dom.jsonFullscreenOutput.textContent = JSON.stringify(state.lastResult, null, 2);
+  dom.jsonFullscreenOutput.textContent = JSON.stringify(data, null, 2);
   openModal(dom.jsonFullscreen);
 }
 
@@ -586,18 +670,19 @@ function generatePdfReport() {
   doc.setFontSize(11);
   doc.text(`Datum: ${new Date().toLocaleString()}`, 14, 30);
   doc.text(`Modell: ${state.lastResult.teachable_model?.name || "OPENCORE"}`, 14, 38);
+  doc.text(`Modus: ${(state.lastResult.analysis_mode || "hybrid").toUpperCase()}`, 14, 46);
   doc.setFontSize(12);
-  doc.text("Summary:", 14, 48);
+  doc.text("Summary:", 14, 56);
   doc.setFontSize(11);
   const summary = doc.splitTextToSize(state.lastResult.summary?.text || "", 180);
-  doc.text(summary, 14, 56);
-  let offset = 56 + summary.length * 6;
+  doc.text(summary, 14, 64);
+  let offset = 64 + summary.length * 5;
   state.lastResult.items.forEach((item, idx) => {
     doc.setFontSize(12);
     doc.text(`Bild ${idx + 1}: ${item.image_id}`, 14, offset);
     offset += 6;
     doc.setFontSize(10);
-    const text = doc.splitTextToSize(item.analysis?.gpt_response || "", 180);
+    const text = doc.splitTextToSize(item.analysis?.gpt_response || "ML-only", 180);
     doc.text(text, 14, offset);
     offset += text.length * 5 + 4;
     if (offset > 260) {
@@ -669,4 +754,106 @@ async function apiRequest(path, options = {}) {
 
 function renderResultPlaceholder() {
   dom.resultDisplay.innerHTML = `<p class="disclaimer">Noch keine Analyse durchgeführt.</p>`;
+}
+
+async function handleStreamSubmit(event) {
+  event.preventDefault();
+  const payload = {
+    label: dom.streamName.value.trim(),
+    source_url: dom.streamUrl.value.trim(),
+    source_type: dom.streamSourceType.value,
+    analysis_mode: dom.streamAnalysisMode.value,
+    prompt: dom.streamPrompt.value.trim(),
+    model_id: dom.streamModel.value || undefined,
+    capture_interval: Number(dom.streamCaptureInterval.value) || 5,
+    batch_interval: Number(dom.streamBatchInterval.value) || 30,
+  };
+  if (!payload.source_url) {
+    showToast("Quelle ist erforderlich.");
+    return;
+  }
+  try {
+    await apiRequest("/api/opencore/streams", { method: "POST", body: payload });
+    showToast("Stream aktiviert.");
+    dom.streamForm.reset();
+    dom.streamCaptureInterval.value = "5";
+    dom.streamBatchInterval.value = "30";
+    loadStreams();
+  } catch (error) {
+    showToast(`Stream konnte nicht gestartet werden: ${error.message}`);
+  }
+}
+
+async function loadStreams() {
+  try {
+    dom.streamStatus.textContent = "Lade Streams …";
+    const payload = await apiRequest("/api/opencore/streams");
+    state.streams = payload.streams || [];
+    renderStreamList();
+    dom.streamStatus.textContent = state.streams.length
+      ? `${state.streams.length} Stream(s) aktiv.`
+      : "Noch keine Streams registriert.";
+  } catch (error) {
+    dom.streamStatus.textContent = `Streams konnten nicht geladen werden (${error.message}).`;
+  }
+}
+
+function renderStreamList() {
+  dom.streamList.innerHTML = "";
+  state.streams.forEach((stream) => {
+    const item = document.createElement("div");
+    item.className = "stream-item";
+    const summary = stream.last_result?.summary?.text || "Noch kein Report vorhanden.";
+    const errorHtml = stream.last_error
+      ? `<p class="disclaimer" style="color:#f87171;">Fehler: ${stream.last_error}</p>`
+      : "";
+    item.innerHTML = `
+      <header>
+        <strong>${stream.label || stream.stream_id}</strong>
+        <small>${stream.analysis_mode?.toUpperCase() || "HYBRID"}</small>
+      </header>
+      <p class="disclaimer">${summary}</p>
+      ${errorHtml}
+      <small class="disclaimer">Letztes Capture: ${stream.last_capture_ts ? new Date(stream.last_capture_ts * 1000).toLocaleTimeString() : "-"}</small>
+    `;
+    const footer = document.createElement("footer");
+    const viewBtn = document.createElement("button");
+    viewBtn.textContent = "JSON";
+    viewBtn.addEventListener("click", () => {
+      if (!stream.last_result) {
+        showToast("Noch kein Resultat für diesen Stream.");
+        return;
+      }
+      openJsonFullscreen(stream.last_result);
+    });
+    const triggerBtn = document.createElement("button");
+    triggerBtn.textContent = "Trigger";
+    triggerBtn.addEventListener("click", () => triggerStream(stream.stream_id));
+    const stopBtn = document.createElement("button");
+    stopBtn.textContent = "Stop";
+    stopBtn.addEventListener("click", () => stopStream(stream.stream_id));
+    footer.append(viewBtn, triggerBtn, stopBtn);
+    item.appendChild(footer);
+    dom.streamList.appendChild(item);
+  });
+}
+
+async function stopStream(streamId) {
+  try {
+    await apiRequest(`/api/opencore/streams/${streamId}`, { method: "DELETE" });
+    showToast("Stream gestoppt.");
+    loadStreams();
+  } catch (error) {
+    showToast(`Stop fehlgeschlagen: ${error.message}`);
+  }
+}
+
+async function triggerStream(streamId) {
+  try {
+    await apiRequest(`/api/opencore/streams/${streamId}/trigger`, { method: "POST" });
+    showToast("Analyse ausgelöst.");
+    loadStreams();
+  } catch (error) {
+    showToast(`Trigger fehlgeschlagen: ${error.message}`);
+  }
 }
