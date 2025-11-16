@@ -316,6 +316,15 @@
               </select>
             </label>
           </div>
+          <div class="actions" style="margin-top: 1rem; gap: 0.5rem">
+            <label style="flex: 1 1 auto">
+              <span>Profile label</span>
+              <input id="provider-profile-name" type="text" placeholder="e.g., OpenAI Vision" />
+              <small>This name is saved as an LLM profile together with the provider selection.</small>
+            </label>
+            <button class="primary" id="provider-save-btn" type="button" style="align-self: flex-end">Save provider profile</button>
+          </div>
+          <p id="provider-save-status" class="cta" style="display: none"></p>
         </section>
 
         <section class="card">
@@ -535,6 +544,9 @@
         ];
 
       const providerGroup = document.getElementById("provider-group");
+      const providerProfileName = document.getElementById("provider-profile-name");
+      const providerSaveBtn = document.getElementById("provider-save-btn");
+      const providerSaveStatus = document.getElementById("provider-save-status");
       const apiBaseInput = document.getElementById("api-base");
       const modelInput = document.getElementById("model-name");
       const apiKeyInput = document.getElementById("api-key");
@@ -645,6 +657,13 @@
         llmStatus.textContent = message;
       }
 
+      function setProviderSaveStatus(message, isError = false) {
+        if (!providerSaveStatus) return;
+        providerSaveStatus.style.display = "block";
+        providerSaveStatus.style.borderColor = isError ? "#ff8181" : "rgba(255,255,255,0.2)";
+        providerSaveStatus.textContent = message;
+      }
+
       function setLlmTestStatus(message, isError = false) {
         if (!llmTestStatus) return;
         llmTestStatus.style.display = "block";
@@ -675,10 +694,12 @@
         const profile = llmProfiles.find((p) => p.id === currentProfileId);
         if (profile) {
           llmProfileName.value = profile.name || "";
+          if (providerProfileName) providerProfileName.value = profile.name || "";
           applyConfig(profile.config || {});
           localStorage.setItem("cannabisLLMConfig", JSON.stringify(profile.config || {}));
         } else if (lastServerConfig) {
           llmProfileName.value = "";
+          if (providerProfileName) providerProfileName.value = "";
           applyConfig(lastServerConfig);
         } else {
           applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
@@ -743,12 +764,29 @@
           setLlmStatus(error.message || "Server konnte nicht speichern.", true);
         } finally {
           if (saveBtn) {
-            setTimeout(() => {
-              saveBtn.disabled = false;
-              saveBtn.textContent = "Speichern";
-            }, 900);
-          }
+          setTimeout(() => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Speichern";
+          }, 900);
         }
+      }
+
+      async function quickSaveProviderProfile() {
+        const name = providerProfileName?.value.trim();
+        if (llmProfileName && name) {
+          llmProfileName.value = name;
+        }
+        if (!currentProfileId) {
+          currentProfileId = null; // ensure a new profile can be created
+        }
+        setProviderSaveStatus("Saving provider profile …");
+        try {
+          await persistLlmConfig();
+          setProviderSaveStatus("Provider profile saved.");
+        } catch (error) {
+          setProviderSaveStatus(error.message || "Could not save profile.", true);
+        }
+      }
       }
 
       async function testLlmConfig() {
@@ -1049,6 +1087,13 @@
           updatePreview();
         }
       });
+
+      if (providerSaveBtn) {
+        providerSaveBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          quickSaveProviderProfile();
+        });
+      }
 
       [apiBaseInput, modelInput, apiKeyInput, visionSelect, promptText].forEach((el) =>
         el.addEventListener("input", updatePreview)
