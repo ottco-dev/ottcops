@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OTTO · OTTCOUTURE Grow Chat</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #05060f;
+        --panel: rgba(9, 12, 32, 0.9);
+        --accent: #40ffa3;
+        --accent-2: #6f7dff;
+        --text: #f6f8ff;
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: radial-gradient(circle at 20% 0%, rgba(111, 125, 255, 0.18), transparent 45%),
+          radial-gradient(circle at 80% 20%, rgba(64, 255, 163, 0.18), transparent 55%),
+          var(--bg);
+        color: var(--text);
+        padding: 2.5rem clamp(1.5rem, 4vw, 4rem);
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+      header {
+        border-radius: 32px;
+        padding: clamp(1.5rem, 3vw, 3rem);
+        background: linear-gradient(140deg, rgba(10, 14, 32, 0.9), rgba(5, 6, 18, 0.95));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55);
+      }
+      header h1 {
+        margin-top: 0;
+        font-size: clamp(2rem, 4vw, 3.25rem);
+      }
+      header p {
+        margin-bottom: 0.75rem;
+        color: rgba(255, 255, 255, 0.72);
+      }
+      header .actions {
+        margin-top: 1.25rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      header .actions a {
+        text-decoration: none;
+        padding: 0.85rem 1.4rem;
+        border-radius: 999px;
+        font-weight: 600;
+        color: #05060f;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      }
+      main {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 1.5rem;
+      }
+      .card {
+        background: var(--panel);
+        border-radius: 28px;
+        padding: 1.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.45);
+      }
+      h2 {
+        margin-top: 0;
+      }
+      textarea {
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(5, 7, 22, 0.85);
+        color: var(--text);
+        min-height: 180px;
+        padding: 1rem;
+        font-family: inherit;
+        font-size: 1rem;
+      }
+      button {
+        border: none;
+        border-radius: 16px;
+        padding: 0.95rem 1.5rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        color: #05060f;
+      }
+      pre {
+        background: rgba(4, 6, 18, 0.9);
+        border-radius: 18px;
+        padding: 1.2rem;
+        min-height: 220px;
+        border: 1px solid rgba(64, 255, 163, 0.25);
+        color: #9ff6c8;
+        font-family: "Space Mono", "Space Grotesk", monospace;
+        white-space: pre-wrap;
+      }
+      footer {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 1.5rem;
+        color: rgba(255, 255, 255, 0.72);
+      }
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <p style="text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.85rem; color: var(--accent)">
+        OTTCOUTURE.EU · OTTO SERVICE
+      </p>
+        <h1>OTTO · Grow questions in the OPENCORE stack</h1>
+        <p>
+          OTTO answers cultivation questions with the same vision/LLM setup as the analyzer. Responses are clear, structured, and avoid medical claims.
+        </p>
+        <p>
+          The chat automatically uses the provider settings saved in the config hub (base URL, model, token). Changes in
+          <a href="/config" style="color: var(--accent)">/config</a> apply to Analyzer, batch/stream runs, and OTTO.
+        </p>
+        <p>
+          Rights & operations: <strong>ottcouture.eu</strong>. Support via <strong>otcdmin@outlook.com</strong>, Instagram
+          <strong>@ottcouture.eu</strong> or Discord
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+        </p>
+        <div class="actions">
+          <a href="/">Back to analyzer</a>
+          <a href="/config" style="background: rgba(255, 255, 255, 0.2); color: #fff">Open configuration</a>
+        </div>
+      </header>
+      <main>
+        <section class="card">
+          <h2>1. Ask OTTO</h2>
+          <p>
+            Briefly describe the setup or question (e.g., climate, nutrients, lighting). OTTO returns a structured response with clear action steps.
+          </p>
+          <form id="otto-form">
+            <label style="display: block; margin-bottom: 0.5rem; color: rgba(255, 255, 255, 0.8)">
+              LLM profile for this session
+              <select id="otto-llm-profile" style="margin-top: 0.35rem; width: 100%; padding: 0.6rem; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.05); color: #fff;">
+                <option value="">Use active server profile</option>
+              </select>
+            </label>
+            <textarea id="otto-input" placeholder="e.g., How do I optimize VPD at 26°C room temp?" required></textarea>
+            <button type="submit">Get answer</button>
+          </form>
+        </section>
+        <section class="card">
+          <h2>2. Response</h2>
+          <pre id="otto-output">Ready.</pre>
+        </section>
+        <section class="card">
+          <h2>Notes & contact</h2>
+          <p>
+            OTTO is based on the OPENCORE community model. All results are technical recommendations for grow setups. For feedback or new model suggestions contact <strong>otcdmin@outlook.com</strong>, Instagram
+            <strong>@ottcouture.eu</strong>, or Discord <strong>discord.gg/GMMSqePfPh</strong>.
+          </p>
+        </section>
+      </main>
+      <footer>
+        © <strong>OTTCOUTURE</strong> — enterprise tooling & OPENCORE community stack. All rights with ottcouture.eu.
+      </footer>
+    <script>
+      const form = document.getElementById("otto-form");
+      const input = document.getElementById("otto-input");
+      const output = document.getElementById("otto-output");
+      const profileSelect = document.getElementById("otto-llm-profile");
+
+      async function loadProfiles() {
+        if (!profileSelect) return;
+        try {
+          const response = await fetch("/api/settings/llm/profiles");
+          if (!response.ok) return;
+          const data = await response.json();
+          const profiles = data.profiles || [];
+          const active = data.active_profile_id || "";
+            profileSelect.innerHTML = '<option value="">Use active server profile</option>';
+          profiles.forEach((profile) => {
+            const option = document.createElement("option");
+            option.value = profile.id;
+            const provider = (profile.config && profile.config.provider) || "openai";
+            option.textContent = `${profile.name} (${provider})`;
+            profileSelect.appendChild(option);
+          });
+          profileSelect.value = active || "";
+        } catch (error) {
+          console.warn("LLM-Profile konnten nicht geladen werden", error);
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const prompt = input.value.trim();
+        if (!prompt) {
+          output.textContent = "Bitte eine Frage eingeben.";
+          return;
+        }
+        output.textContent = "OTTO arbeitet …";
+        try {
+          const response = await fetch("/api/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt, llm_profile_id: profileSelect?.value || undefined }),
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Fehler beim Abruf.");
+          }
+          const data = await response.json();
+          output.textContent = data.response || "Keine Antwort erhalten.";
+        } catch (error) {
+          output.textContent = error.message;
+        }
+      });
+
+      loadProfiles();
+    </script>
+  </body>
+</html>

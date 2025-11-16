@@ -1,72 +1,55 @@
-# Projekt-Dokumentation
+# Project Documentation
 
-Diese Datei beschreibt detailliert, wie die FastAPI-Anwendung aufgebaut ist, wie die
-Modelle vorbereitet werden und wie die Umgebung zu konfigurieren ist.
+This file describes how the FastAPI app is structured, how models are prepared, and how to configure the environment.
 
-## 1. Voraussetzungen
+## 1. Requirements
 - Python 3.10+
-- Zugriff auf einen trainierten Teachable Machine Bildklassifikator als TensorFlow
-  SavedModel oder Keras-Modell.
-- OpenAI API Key mit Zugriff auf ein multimodales Modell (z. B. `gpt-4.1-mini`).
+- Access to a trained Teachable Machine image classifier as a TensorFlow SavedModel or Keras model.
+- OpenAI API key with access to a multimodal model (for example `gpt-4.1-mini`).
+- For video streams: optional OpenCV (`opencv-python-headless`) and HTTP access to snapshot/RTSP sources.
 
 ## 2. Installation
-1. Repository auschecken und in das Projektverzeichnis wechseln.
-2. Virtuelle Umgebung erstellen:
+1. Check out the repository and switch into the project directory.
+2. Create a virtual environment:
    ```bash
    python -m venv .venv
    source .venv/bin/activate
    ```
-3. Abhängigkeiten installieren:
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-## 3. Modelle & Labels
-- Ablageort: `./models/teachable_model` (per `TEACHABLE_MODEL_PATH` überschreibbar).
-- Muss die vom Export generierte `labels.txt` enthalten. Den Inhalt dieser Datei in die
-  Konstante `CLASS_NAMES` in `app.py` übernehmen, damit die Vorhersagen korrekt benannt
-  werden.
-- Die Modell-Ordnerstruktur entspricht der Standardstruktur eines TensorFlow
-  SavedModels (`assets/`, `variables/`, `saved_model.pb`).
+## 3. Models & Labels
+- Primary location is `TM-models/`. The upload feature unzips bundles (TFJS with `metadata.json`, `model.json`, `weights.bin` **or** Keras packages with `keras_model.h5` and `labels.txt`) into a subfolder and writes an entry to `TM-models/registry.json`.
+- If no entry is active, the analyzer falls back to `TEACHABLE_MODEL_PATH` (for example `./models/teachable_model`).
+- Labels are pulled automatically from `metadata.json` or—when using Keras packages—from `labels.txt`. If data is missing, the service generates neutral names (`class_1`, `class_2`, …).
 
-## 4. Konfiguration
-| Variable | Beschreibung |
+## 4. Configuration
+| Variable | Description |
 | --- | --- |
-| `OPENAI_API_KEY` | Pflichtvariable. API Key wird vom offiziellen OpenAI SDK gelesen. |
-| `OPENAI_GPT_MODEL` | Optional. Default ist `gpt-4.1-mini`. |
-| `TEACHABLE_MODEL_PATH` | Optional. Pfad zum Modellverzeichnis. |
+| `OPENAI_API_KEY` | Required for cloud LLMs and the OTTO chat. |
+| `OPENAI_GPT_MODEL` | Optional. Default is `gpt-4.1-mini`. |
+| `TEACHABLE_MODEL_PATH` | Optional fallback path for a local TM model. |
 
-## 5. Starten des Servers
-```bash
-export OPENAI_API_KEY="sk-..."
-uvicorn app:app --host 0.0.0.0 --port 8000
-```
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-- Simple HTML UI: http://localhost:8000/
+Additional persistence files:
+- `app-settings.json`: stores the default model and provider/prompt configuration from `/api/settings/llm`.
+- `network-config.json`: remembers the mDNS status (hostname/port for `ottcolab.local`).
 
-## 6. HTML-Demo
-`static/index.html` enthält ein schlichtes Formular, das `prompt` und `image` sammelt
-und als `multipart/form-data` an `/analyze` sendet. Ergebnisse werden als JSON
-angezeigt. Die Datei kann individuell angepasst werden.
+## 5. LLM Settings
+- Managed via `/api/settings/llm` and the config console.
+- Multiple profiles are supported (OpenAI, Ollama, LM Studio). Each stores base URL, model name, and system prompt.
+- Profiles can be activated per run or set as the default for Analyzer, Streams, and OTTO chat.
 
-## 7. Fehlerbehandlung
-- **400**: fehlender Prompt oder Bild.
-- **500**: TensorFlow- oder Preprocessing-Fehler.
-- **502**: Probleme beim OpenAI-Aufruf.
+## 6. Streams & Automation
+- Stream jobs are created through the UI or `/api/opencore/streams*` endpoints.
+- Jobs can snapshot cameras every few seconds and batch analyses roughly every 30 seconds.
+- Results feed into the same JSON pipeline used by single-image requests.
 
-## 8. Deployment-Hinweise
-- TensorFlow ist speicherintensiv; setzen Sie passende Container-Limits.
-- `OPENAI_API_KEY` niemals commiten, sondern per Secret Management bereitstellen.
-- Optional: Gunicorn/Uvicorn-Worker über `gunicorn -k uvicorn.workers.UvicornWorker`.
+## 7. Custom Modules
+- Add Python modules under `opencore/` and include them from `app.py`.
+- Mirror the response shape of existing endpoints (status + payload + optional debug) so the UI can consume them immediately.
+- Front-end hooks belong in `static/index.html` or `static/config.html` with logic in `static/js/app.js`.
 
-## 9. Weiterentwicklung
-- `CLASS_NAMES` aus einer `labels.txt` lesen statt hart zu kodieren.
-- Modelldateien versionieren (z. B. via object storage) und bei Start synchronisieren.
-- Authentifizierung vor den Endpunkten ergänzen.
-
-## 10. Lizenz
-- Die Anwendung steht unter der [GNU Affero General Public License v3.0](LICENSE).
-- OTTCOUTURE behält sämtliche Rechte am Markennamen und Branding.
-- Änderungen oder Erweiterungen müssen offen bleiben, wieder unter der AGPL
-  veröffentlicht werden und eine eindeutige Attribution an OTTCOUTURE enthalten.
+## 8. License & Usage
+OPENCORE Analyzer is free for private individuals and developer testing. Cannabis Social Clubs (CSCs) and companies must contact <https://ottcouture.eu> to license commercial use. Feedback: otcdmin@outlook.com, Instagram @ottcouture.eu, Discord discord.gg/GMMSqePfPh.

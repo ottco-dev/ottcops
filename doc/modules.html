@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Custom Modules · OPENCORE Analyzer</title>
+    <style>
+      body { font-family: "Space Grotesk", system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 2.5rem; line-height: 1.6; }
+      header { border-bottom: 2px solid #0f172a; margin-bottom: 2rem; }
+      pre { background: #0f172a; color: #f9fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      .doc-nav a { margin-right: 1rem; color: #0d5c63; text-decoration: none; font-weight: 600; }
+      ul { padding-left: 1.2rem; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Custom Modules</h1>
+      <p>Attach your own Python modules or UI hooks without rewriting the stack.</p>
+      <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Backend plug-ins</h2>
+      <ol>
+        <li>Create a module inside <code>opencore/</code> (e.g., <code>opencore/my_module.py</code>) and expose functions.</li>
+        <li>Import it from <code>app.py</code> or another router and register FastAPI routes.</li>
+        <li>Reuse helpers from <code>opencore.config</code> and <code>opencore.settings_store</code> to access paths and saved settings.</li>
+        <li>Return JSON shaped like existing endpoints (status, payload, optional debug block) to keep the UI compatible.</li>
+      </ol>
+      <pre><code># opencore/my_module.py
+from fastapi import APIRouter
+router = APIRouter()
+
+@router.get("/api/custom/health")
+def health():
+    return {"status": "ok", "module": "custom"}</code></pre>
+      <pre><code># app.py (excerpt)
+from opencore import my_module
+app.include_router(my_module.router)
+</code></pre>
+    </section>
+
+    <section>
+      <h2>Front-end hooks</h2>
+      <ul>
+        <li>Add UI controls in <code>static/index.html</code> or <code>static/config.html</code> with unique IDs.</li>
+        <li>Implement behavior in <code>static/js/app.js</code>; follow the existing pattern of helper functions plus short comments.</li>
+        <li>Use the shared <code>requestJson()</code> helper so API Token Mode and debug handling work automatically.</li>
+      </ul>
+      <pre><code>// static/js/app.js (example)
+function registerCustomAction() {
+  const btn = document.getElementById("customActionBtn");
+  btn.addEventListener("click", async () => {
+    const resp = await requestJson("/api/custom/health", { method: "GET" });
+    showToast(`Custom module says: ${resp.module}`);
+  });
+}
+</code></pre>
+    </section>
+
+    <section>
+      <h2>Add-ons (end-to-end)</h2>
+      <ol>
+        <li>Define a backend router (as above) and mount it in <code>app.py</code>.</li>
+        <li>Create a UI control for the feature (button, form, toggle) with a unique ID.</li>
+        <li>Implement the client logic in <code>static/js/app.js</code> using <code>requestJson()</code> so API Token Mode works.</li>
+        <li>Add a short HTML guide under <code>/doc</code> (e.g., <code>/doc/addon-yourfeature.html</code>) and link it from <code>/doc/index.html</code>.</li>
+        <li>Test with <code>python -m compileall</code> and a manual UI click to confirm the full round-trip.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Testing</h2>
+      <ul>
+        <li>Run <code>python -m compileall app.py opencore</code> to catch syntax issues.</li>
+        <li>Use the debug panel to confirm request IDs and timings for new routes.</li>
+      </ul>
+    </section>
+  </body>
+</html>

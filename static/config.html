@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OTTCOUTURE Self-Host Konfigurator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #040510;
+        --card: rgba(9, 12, 34, 0.92);
+        --muted: rgba(255, 255, 255, 0.72);
+        --accent: #40ffa3;
+        --accent-2: #6f7dff;
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #f8fbff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: radial-gradient(circle at 10% 0%, rgba(111, 125, 255, 0.15), transparent 45%),
+          radial-gradient(circle at 80% 20%, rgba(64, 255, 163, 0.25), transparent 55%),
+          var(--bg);
+        min-height: 100vh;
+        padding: 2.5rem clamp(1rem, 3vw, 4rem) 3rem;
+        color: #f8fbff;
+      }
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+      }
+      header {
+        background: linear-gradient(135deg, rgba(10, 12, 32, 0.9), rgba(9, 9, 22, 0.95));
+        border-radius: 32px;
+        padding: clamp(1.5rem, 3vw, 3rem);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 40px 80px rgba(2, 3, 6, 0.8);
+      }
+      header h1 {
+        font-size: clamp(2rem, 4vw, 3.25rem);
+        margin-bottom: 0.75rem;
+      }
+      header p {
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      header .actions {
+        margin-top: 1.5rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      header .actions a {
+        text-decoration: none;
+        padding: 0.85rem 1.25rem;
+        border-radius: 999px;
+        font-weight: 600;
+        color: #05060f;
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+      }
+      .grid {
+        display: grid;
+        gap: 1.25rem;
+      }
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      .card {
+        background: var(--card);
+        border-radius: 26px;
+        padding: 1.75rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+      }
+      h2 {
+        margin-top: 0;
+        font-size: 1.35rem;
+      }
+      h3 {
+        margin-top: 0;
+        font-size: 1.1rem;
+      }
+      p,
+      li,
+      label,
+      small {
+        color: var(--muted);
+      }
+      label span {
+        display: block;
+        font-weight: 600;
+        color: #f8fbff;
+        margin-bottom: 0.35rem;
+      }
+      input[type="text"],
+      input[type="url"],
+      select,
+      textarea {
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(3, 5, 17, 0.8);
+        padding: 0.85rem 1rem;
+        color: #f8fbff;
+        font-size: 1rem;
+        font-family: inherit;
+      }
+      textarea {
+        min-height: 160px;
+      }
+      .providers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+      }
+      .provider {
+        flex: 1 1 280px;
+        display: flex;
+        gap: 0.85rem;
+        padding: 1.1rem;
+        border-radius: 20px;
+        background: rgba(8, 10, 25, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        cursor: pointer;
+        transition: border 0.2s ease, transform 0.2s ease;
+      }
+      .provider.active {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+      .provider input {
+        margin-top: 0.35rem;
+      }
+      .prompt-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      .prompt-buttons button {
+        border: none;
+        border-radius: 999px;
+        padding: 0.55rem 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+      .prompt-buttons button.active {
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #05060f;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+      button {
+        border: none;
+        border-radius: 16px;
+        padding: 0.9rem 1.4rem;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button.primary {
+        background: linear-gradient(120deg, var(--accent), var(--accent-2));
+        color: #05060f;
+      }
+      button.secondary {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+      .models li {
+        margin-bottom: 0.8rem;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.2rem 0.85rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        letter-spacing: 0.04em;
+        background: rgba(111, 125, 255, 0.18);
+        color: var(--accent);
+        border: 1px solid rgba(64, 255, 163, 0.5);
+        margin-left: 0.4rem;
+      }
+      .tm-list {
+        margin-top: 1.5rem;
+      }
+      .tm-list ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .tm-list li {
+        padding: 0.85rem 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .tm-list li:last-child {
+        border-bottom: none;
+      }
+      .tm-list small {
+        display: block;
+        margin-top: 0.35rem;
+      }
+      pre#preview {
+        background: rgba(0, 0, 0, 0.45);
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 1rem;
+        overflow-x: auto;
+      }
+      .cta {
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        padding: 1rem 1.5rem;
+        font-size: 0.95rem;
+        color: var(--muted);
+      }
+      .cta strong {
+        color: #fff;
+      }
+      footer {
+        text-align: center;
+        margin-top: 1rem;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+          <p style="text-transform: uppercase; letter-spacing: 0.25em; font-size: 0.8rem; color: var(--accent)">
+            OTTCOUTURE.EU — ENTERPRISE OPENCORE
+          </p>
+          <h1>Self-host deck for OTTCOPS</h1>
+          <p>
+            This page bundles every OPENCORE community model setting: provider choice, system prompts, TM depot, and network publishing.
+            Goal: clean workflows for cannabis analysis with neutral, enterprise language.
+          </p>
+          <p>
+            Rights & operations belong to <strong>ottcouture.eu</strong>. Support: <strong>otcdmin@outlook.com</strong>, Instagram
+            <strong>@ottcouture.eu</strong>, or Discord
+            <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener" style="color: var(--accent)">
+              discord.gg/GMMSqePfPh
+            </a>
+            .
+          </p>
+          <div class="actions">
+            <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">Join Discord</a>
+            <a href="/" style="background: rgba(255, 255, 255, 0.2); color: #fff">Back to analyzer</a>
+          </div>
+        </header>
+
+        <section class="card">
+          <h2>1. Choose provider</h2>
+          <div class="providers" id="provider-group">
+            <label class="provider" data-provider="openai">
+              <input type="radio" name="provider" value="openai" checked />
+              <div>
+                <strong>OpenAI Cloud Vision</strong>
+                <p>Reliable hosting with vision LLMs such as <code>gpt-4.1-mini</code>. No local setup required.</p>
+              </div>
+            </label>
+            <label class="provider" data-provider="ollama">
+              <input type="radio" name="provider" value="ollama" />
+              <div>
+                <strong>Ollama (Self-Hosted)</strong>
+                <p>Run the recommended models on your workstation or edge server with vision enabled.</p>
+              </div>
+            </label>
+            <label class="provider" data-provider="lmstudio">
+              <input type="radio" name="provider" value="lmstudio" />
+              <div>
+                <strong>LM Studio API</strong>
+                <p>Start the API server, copy the base URL, and pick a vision-capable model.</p>
+              </div>
+            </label>
+          </div>
+          <div class="grid two" style="margin-top: 1.5rem">
+            <label>
+              <span>API Base URL</span>
+              <input id="api-base" type="url" placeholder="https://127.0.0.1:11434" />
+              <small>Leave blank for OpenAI. For self-host, enter your local endpoint.</small>
+            </label>
+            <label>
+              <span>Model Name</span>
+              <input id="model-name" type="text" placeholder="phi3.5-vision-mini" />
+              <small>e.g., Granite Vision 3B or LLaVA-Phi-3 Mini.</small>
+            </label>
+            <label>
+              <span>API Key (optional)</span>
+              <input id="api-key" type="text" placeholder="Only if your server requires auth" />
+            </label>
+            <label>
+              <span>Vision support</span>
+              <select id="vision-capable">
+                <option value="yes">Direct image prompts</option>
+                <option value="manual">Image is preprocessed</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions" style="margin-top: 1rem; gap: 0.5rem">
+            <label style="flex: 1 1 auto">
+              <span>Profile label</span>
+              <input id="provider-profile-name" type="text" placeholder="e.g., OpenAI Vision" />
+              <small>This name is saved as an LLM profile together with the provider selection.</small>
+            </label>
+            <button class="primary" id="provider-save-btn" type="button" style="align-self: flex-end">Save provider profile</button>
+          </div>
+          <p id="provider-save-status" class="cta" style="display: none"></p>
+        </section>
+
+        <section class="card">
+          <h2>2. Cannabis system prompts</h2>
+          <p class="cta">
+            Presets provide structured starting prompts for trichome, terpene, and health checks. They are intentionally concise
+            and can be extended as needed.
+          </p>
+          <div class="prompt-buttons" id="prompt-buttons"></div>
+          <textarea id="prompt-text"></textarea>
+        </section>
+
+        <section class="card">
+          <h2>3. Vision models with low resource needs</h2>
+          <ul class="models">
+            <li>
+              <strong>Phi-3.5 Vision Mini (~4.5 GB)</strong>
+              Runs on ~8 GB VRAM/CPU, great for quick resin maps and general strain speculation.
+            </li>
+            <li>
+              <strong>LLaVA-Phi-3 Mini (~5 GB)</strong>
+              Detects leaf glitches and foreign objects reliably. Ideal for Ollama & LM Studio.
+            </li>
+            <li>
+              <strong>Granite Vision 3B (~3.8 GB)</strong>
+              Efficient on edge devices, solid strain clustering without much VRAM.
+            </li>
+            <li>
+              <strong>Bark-LLM Vision 7B (~7.2 GB)</strong>
+              For longer JSON reports with batch processing in LM Studio (Q4_K_M recommended).
+            </li>
+          </ul>
+        </section>
+
+        <section class="card">
+          <h2>4. Tips for Ollama &amp; LM Studio</h2>
+          <div class="grid two">
+            <div>
+              <h3>Ollama</h3>
+              <ul>
+                <li><code>ollama pull phi3.5-vision-mini</code> or pull Granite Vision Q4.</li>
+                <li>In the <code>Modelfile</code> set <code>PARAMETER vision true</code> and <code>num_ctx 4096+</code>.</li>
+                <li>Expose the server with <code>OLLAMA_ORIGINS=*</code> for local tools.</li>
+                <li>HTTP endpoint: <code>POST /api/chat</code> with JSON payload like the preview below.</li>
+              </ul>
+            </div>
+            <div>
+              <h3>LM Studio</h3>
+              <ul>
+                <li>Start the API server, enable vision, and note the port (default 1234).</li>
+                <li>On weak GPUs choose Q4 or Q5 quantization and enable CPU offloading.</li>
+                <li>Optionally set a token and enter it here if auth is required.</li>
+                <li>Add an HTTPS reverse proxy for multi-user deployments.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="tm-depot">
+          <h2>5. OTTCOUTURE Teachable Machine depot</h2>
+          <p>
+            Upload a ZIP (TFJS with <code>metadata.json</code>/<code>model.json</code>/<code>weights.bin</code> or Keras with
+            <code>keras_model.h5</code> + <code>labels.txt</code>), choose the type, and we pin the bundle under <code>/TM-models</code>.
+            Models become selectable in the analyzer and OTTO chat and stay branded to <strong>ottcouture.eu</strong>.
+          </p>
+          <div class="grid two">
+            <label>
+              <span>Modellname</span>
+              <input id="tm-name" type="text" placeholder="z. B. Frosted Gelato V1" />
+            </label>
+            <label>
+              <span>Kategorie</span>
+              <select id="tm-type">
+                <option value="trichome">Trichome analysis</option>
+                <option value="health">Health &amp; leaf safety</option>
+              </select>
+            </label>
+            <label>
+              <span>ZIP upload</span>
+              <input id="tm-file" type="file" accept=".zip" />
+              <small>Structure: TFJS (metadata.json/model.json/weights.bin) or Keras (keras_model.h5 + labels.txt [+ optional metadata.json]).</small>
+            </label>
+            <label>
+              <span>Community Reminder</span>
+              <textarea readonly style="min-height: 120px">
+  Feedback? otcdmin@outlook.com · Instagram @ottcouture.eu · Discord discord.gg/GMMSqePfPh. We roll the best builds into the next release.
+              </textarea>
+            </label>
+          </div>
+          <div class="actions" style="margin-top: 1rem">
+            <button class="primary" id="tm-upload-btn">Install ZIP</button>
+            <button class="secondary" id="tm-refresh-btn" type="button">Refresh models</button>
+            <button class="secondary" id="tm-clear-default" type="button">Clear default</button>
+          </div>
+        <p id="tm-status" class="cta" style="display: none"></p>
+        <p id="tm-default-note" class="cta"></p>
+          <div class="tm-list">
+            <h3>Installed OTTCOPS TM models</h3>
+            <ul id="tm-models">
+              <li>Loading registry …</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="card" id="network-card">
+          <h2>6. WiFi broadcast &amp; ottcolab.local</h2>
+          <p>
+            To let every device on the same WiFi reach <code>ottcolab.local</code>, we announce a hostname via mDNS. This mode is
+            fully owned by <strong>ottcouture.eu</strong>; send feedback to otcdmin@outlook.com or
+            <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+          </p>
+          <div class="grid two">
+            <label>
+              <span>Hostname (.local)</span>
+              <input id="mdns-host" type="text" placeholder="ottcolab.local" />
+              <small>We normalize to .local – works on macOS, Windows, Linux &amp; iOS/Android.</small>
+            </label>
+            <label>
+              <span>Port</span>
+              <input id="mdns-port" type="number" min="1" max="65535" placeholder="8000" />
+              <small>Same port as your Uvicorn server. Default 8000.</small>
+            </label>
+          </div>
+          <div class="actions" style="margin-top: 1rem">
+            <button class="primary" id="mdns-start" type="button">Enable broadcast</button>
+            <button class="secondary" id="mdns-stop" type="button">Stop</button>
+          </div>
+          <p class="cta" id="mdns-status">Status: loading …</p>
+          <p class="cta">
+            Technical note: we announce `_http._tcp` via <code>zeroconf</code>. Make sure
+            <code>pip install zeroconf</code> is installed, otherwise the broadcast cannot start.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>7. Save settings</h2>
+          <p>
+            Provider settings persist locally (<code>localStorage.cannabisLLMConfig</code>) and server-side via
+            <code>/api/settings/llm</code>. Multiple profiles can be created here and selected in the analyzer/OTTO.
+          </p>
+          <div class="grid two">
+            <label>
+              Select profile
+              <select id="llm-profile-list">
+                <option value="">Active server profile</option>
+              </select>
+              <small>Profiles define provider, base URL, model, and system prompt.</small>
+            </label>
+            <label>
+              Profile name
+              <input id="llm-profile-name" type="text" placeholder="e.g., OpenAI Vision" />
+              <small>Short label for dropdowns in Analyzer/Streams/OTTO.</small>
+            </label>
+          </div>
+          <div class="actions" style="gap: 0.5rem; margin-bottom: 0.5rem">
+            <button class="secondary" id="llm-profile-new" type="button">New profile</button>
+            <button class="primary" id="llm-profile-save" type="button">Save profile</button>
+            <button class="secondary" id="llm-profile-activate" type="button">Set as active</button>
+            <button class="secondary" id="llm-profile-delete" type="button">Delete profile</button>
+          </div>
+          <label style="display: inline-flex; align-items: center; gap: 0.35rem; margin-bottom: 0.5rem">
+            <input type="checkbox" id="llm-profile-active" checked />
+            Apply as active profile after saving
+          </label>
+          <div class="actions">
+            <button class="primary" id="save-btn">Save</button>
+            <button class="secondary" id="llm-test-btn" type="button">Test connection</button>
+            <button class="secondary" id="reset-btn">Reset</button>
+            <a
+              href="/"
+              style="text-decoration: none; padding: 0.85rem 1.25rem; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.15); color: #fff"
+              >Back to analyzer</a
+            >
+          </div>
+        <pre id="preview"></pre>
+        <p id="llm-save-status" class="cta" style="display: none"></p>
+        <p id="llm-test-status" class="cta" style="display: none"></p>
+          <p class="cta">
+            Feedback & support: <strong>otcdmin@outlook.com</strong>, Instagram <strong>@ottcouture.eu</strong>, Discord
+            <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">discord.gg/GMMSqePfPh</a>.
+          </p>
+        </section>
+
+        <footer>
+          © OTTCOUTURE OpenCore — all rights belong to
+          <a href="https://ottcouture.eu" target="_blank" rel="noopener">ottcouture.eu</a>. Discord:
+          <a href="https://discord.gg/GMMSqePfPh" target="_blank" rel="noopener">GMMSqePfPh</a>.
+        </footer>
+    </div>
+
+    <script>
+      const PROMPTS = [
+        {
+          id: "potency",
+          label: "Trichome Heatmap",
+            text:
+              "Analyze visible trichomes, resin coverage, and color gradients. Produce JSON with keys resin_density (percent), maturity_score (0-100), and observations[] for bullet points.",
+        },
+        {
+          id: "terpen",
+          label: "Terpen Stack",
+            text:
+              "Infer potential terpene clusters from color, structure, and crystals. JSON structure: dominant_terps[], aroma_tags[], pairing_notes.",
+        },
+        {
+          id: "contaminants",
+          label: "Glitch Hunt",
+            text:
+              "Scan for foreign objects, mold, or leaf stress. JSON output with severity_scores, detected_artifacts, and recommended_actions.",
+        },
+        {
+          id: "compliance",
+          label: "Drop Dossier",
+            text:
+              "Document visible traits and packaging details for a collector briefing. JSON fields: meta, packaging, release_notes.",
+          },
+        ];
+
+      const providerGroup = document.getElementById("provider-group");
+      const providerProfileName = document.getElementById("provider-profile-name");
+      const providerSaveBtn = document.getElementById("provider-save-btn");
+      const providerSaveStatus = document.getElementById("provider-save-status");
+      const apiBaseInput = document.getElementById("api-base");
+      const modelInput = document.getElementById("model-name");
+      const apiKeyInput = document.getElementById("api-key");
+      const visionSelect = document.getElementById("vision-capable");
+      const promptButtons = document.getElementById("prompt-buttons");
+      const promptText = document.getElementById("prompt-text");
+      const saveBtn = document.getElementById("save-btn");
+      const resetBtn = document.getElementById("reset-btn");
+      const preview = document.getElementById("preview");
+      const tmNameInput = document.getElementById("tm-name");
+      const tmTypeSelect = document.getElementById("tm-type");
+      const tmFileInput = document.getElementById("tm-file");
+      const tmUploadBtn = document.getElementById("tm-upload-btn");
+      const tmRefreshBtn = document.getElementById("tm-refresh-btn");
+      const tmStatus = document.getElementById("tm-status");
+      const tmList = document.getElementById("tm-models");
+      const tmDefaultNote = document.getElementById("tm-default-note");
+      const tmClearBtn = document.getElementById("tm-clear-default");
+      const mdnsHostInput = document.getElementById("mdns-host");
+      const mdnsPortInput = document.getElementById("mdns-port");
+      const mdnsStatus = document.getElementById("mdns-status");
+      const mdnsStartBtn = document.getElementById("mdns-start");
+      const mdnsStopBtn = document.getElementById("mdns-stop");
+      const llmStatus = document.getElementById("llm-save-status");
+      const llmProfileList = document.getElementById("llm-profile-list");
+      const llmProfileName = document.getElementById("llm-profile-name");
+      const llmProfileNew = document.getElementById("llm-profile-new");
+      const llmProfileSave = document.getElementById("llm-profile-save");
+      const llmProfileDelete = document.getElementById("llm-profile-delete");
+      const llmProfileActivate = document.getElementById("llm-profile-activate");
+      const llmProfileActiveToggle = document.getElementById("llm-profile-active");
+      const llmTestBtn = document.getElementById("llm-test-btn");
+      const llmTestStatus = document.getElementById("llm-test-status");
+
+      let llmProfiles = [];
+      let activeProfileId = null;
+      let currentProfileId = null;
+      let lastServerConfig = null;
+
+      function setActiveProvider(value) {
+        providerGroup.querySelectorAll(".provider").forEach((el) => {
+          el.classList.toggle("active", el.dataset.provider === value);
+          const input = el.querySelector("input");
+          input.checked = el.dataset.provider === value;
+        });
+      }
+
+      function renderPromptButtons(activeId) {
+        promptButtons.innerHTML = "";
+        PROMPTS.forEach((prompt) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.textContent = prompt.label;
+          button.classList.toggle("active", prompt.id === activeId);
+          button.addEventListener("click", () => {
+            promptText.value = prompt.text;
+            renderPromptButtons(prompt.id);
+            updatePreview();
+          });
+          promptButtons.appendChild(button);
+        });
+      }
+
+      function getConfig() {
+        return {
+          provider: providerGroup.querySelector('input[name="provider"]:checked').value,
+          apiBase: apiBaseInput.value,
+          model: modelInput.value,
+          apiKey: apiKeyInput.value,
+          vision: visionSelect.value,
+          systemPrompt: promptText.value,
+        };
+      }
+
+      function applyConfig(config) {
+        setActiveProvider(config.provider || "openai");
+        apiBaseInput.value = config.apiBase || "";
+        modelInput.value = config.model || "";
+        apiKeyInput.value = config.apiKey || "";
+        visionSelect.value = config.vision || "yes";
+        promptText.value = config.systemPrompt || PROMPTS[0].text;
+        renderPromptButtons(
+          PROMPTS.find((p) => p.text === promptText.value)?.id || PROMPTS[0].id
+        );
+        updatePreview();
+      }
+
+      function updatePreview() {
+        const config = getConfig();
+        preview.textContent = JSON.stringify(config, null, 2);
+      }
+
+      function formatModelType(type) {
+        return type === "health" ? "Health & Leaf" : "Trichomen";
+      }
+
+      function setTmStatus(message, isError = false) {
+        if (!tmStatus) return;
+        tmStatus.style.display = "block";
+        tmStatus.style.borderColor = isError ? "#ff8181" : "rgba(255,255,255,0.2)";
+        tmStatus.textContent = message;
+      }
+
+      function setLlmStatus(message, isError = false) {
+        if (!llmStatus) return;
+        llmStatus.style.display = "block";
+        llmStatus.style.borderColor = isError ? "#ff8181" : "rgba(255,255,255,0.2)";
+        llmStatus.textContent = message;
+      }
+
+      function setProviderSaveStatus(message, isError = false) {
+        if (!providerSaveStatus) return;
+        providerSaveStatus.style.display = "block";
+        providerSaveStatus.style.borderColor = isError ? "#ff8181" : "rgba(255,255,255,0.2)";
+        providerSaveStatus.textContent = message;
+      }
+
+      function setLlmTestStatus(message, isError = false) {
+        if (!llmTestStatus) return;
+        llmTestStatus.style.display = "block";
+        llmTestStatus.style.borderColor = isError ? "#ff8181" : "rgba(255,255,255,0.2)";
+        llmTestStatus.textContent = message;
+      }
+
+      function renderProfileList() {
+        if (!llmProfileList) return;
+        llmProfileList.innerHTML = "";
+        const base = document.createElement("option");
+        base.value = "";
+        base.textContent = activeProfileId ? `Aktives Server-Profil (${activeProfileId})` : "Aktives Server-Profil";
+        llmProfileList.appendChild(base);
+        llmProfiles.forEach((profile) => {
+          const option = document.createElement("option");
+          option.value = profile.id;
+          const provider = (profile.config && profile.config.provider) || "openai";
+          const activeLabel = profile.id === activeProfileId ? " · aktiv" : "";
+          option.textContent = `${profile.name} (${provider})${activeLabel}`;
+          llmProfileList.appendChild(option);
+        });
+        llmProfileList.value = currentProfileId || "";
+      }
+
+      function applyProfileSelection(profileId) {
+        currentProfileId = profileId || null;
+        const profile = llmProfiles.find((p) => p.id === currentProfileId);
+        if (profile) {
+          llmProfileName.value = profile.name || "";
+          if (providerProfileName) providerProfileName.value = profile.name || "";
+          applyConfig(profile.config || {});
+          localStorage.setItem("cannabisLLMConfig", JSON.stringify(profile.config || {}));
+        } else if (lastServerConfig) {
+          llmProfileName.value = "";
+          if (providerProfileName) providerProfileName.value = "";
+          applyConfig(lastServerConfig);
+        } else {
+          applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
+        }
+        updatePreview();
+      }
+
+      function applyLlmServerPayload(payload) {
+        if (!payload) return;
+        llmProfiles = payload.profiles || llmProfiles;
+        activeProfileId = payload.active_profile_id ?? activeProfileId;
+        lastServerConfig = payload.config || lastServerConfig;
+        if (payload.profile) {
+          currentProfileId = payload.profile.id;
+          llmProfileName.value = payload.profile.name || "";
+        }
+        if (!payload.profile && payload.active_profile_id) {
+          currentProfileId = payload.active_profile_id;
+        }
+        renderProfileList();
+      }
+
+      async function fetchServerLlmState() {
+        try {
+          const response = await fetch("/api/settings/llm/profiles");
+          if (!response.ok) return null;
+          return await response.json();
+        } catch (error) {
+          console.warn("LLM-Profile konnten nicht geladen werden", error);
+          return null;
+        }
+      }
+
+      async function persistLlmConfig() {
+        const config = getConfig();
+        localStorage.setItem("cannabisLLMConfig", JSON.stringify(config));
+        updatePreview();
+        if (saveBtn) {
+          saveBtn.disabled = true;
+          saveBtn.textContent = "Speichert …";
+        }
+        try {
+          const response = await fetch("/api/settings/llm", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              config,
+              profile_id: currentProfileId || null,
+              profile_name: llmProfileName.value,
+              make_active: llmProfileActiveToggle?.checked ?? true,
+            }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.detail || "Serverfehler beim Speichern");
+          }
+          applyLlmServerPayload(payload);
+          applyProfileSelection(currentProfileId);
+          setLlmStatus("Profil gespeichert " + new Date().toLocaleTimeString());
+        } catch (error) {
+          console.error("LLM save", error);
+          setLlmStatus(error.message || "Server konnte nicht speichern.", true);
+        } finally {
+          if (saveBtn) {
+          setTimeout(() => {
+            saveBtn.disabled = false;
+            saveBtn.textContent = "Speichern";
+          }, 900);
+        }
+      }
+
+      async function quickSaveProviderProfile() {
+        const name = providerProfileName?.value.trim();
+        if (llmProfileName && name) {
+          llmProfileName.value = name;
+        }
+        if (!currentProfileId) {
+          currentProfileId = null; // ensure a new profile can be created
+        }
+        setProviderSaveStatus("Saving provider profile …");
+        try {
+          await persistLlmConfig();
+          setProviderSaveStatus("Provider profile saved.");
+        } catch (error) {
+          setProviderSaveStatus(error.message || "Could not save profile.", true);
+        }
+      }
+      }
+
+      async function testLlmConfig() {
+        const config = getConfig();
+        setLlmTestStatus("Testing …");
+        if (llmTestBtn) {
+          llmTestBtn.disabled = true;
+          llmTestBtn.textContent = "Teste …";
+        }
+        try {
+          const response = await fetch("/api/settings/llm/test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              config,
+              profile_id: currentProfileId || null,
+              profile_name: llmProfileName.value,
+            }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.detail || "LLM-Test fehlgeschlagen");
+          }
+          const latency = payload.elapsed_ms != null ? `${payload.elapsed_ms} ms` : "–";
+          setLlmTestStatus(
+            `LLM erreichbar (${payload.provider || "?"} · ${payload.model || "?"}) — Latenz ${latency}. Preview: ${
+              payload.preview || "ok"
+            }`
+          );
+        } catch (error) {
+          setLlmTestStatus(error.message || "LLM nicht erreichbar.", true);
+        } finally {
+          if (llmTestBtn) {
+            llmTestBtn.disabled = false;
+            llmTestBtn.textContent = "Verbindung testen";
+          }
+        }
+      }
+
+      async function resetLlmConfig() {
+        localStorage.removeItem("cannabisLLMConfig");
+        applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
+        try {
+          const response = await fetch("/api/settings/llm", { method: "DELETE" });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(payload.detail || "Server error while resetting");
+          }
+          llmProfiles = payload.profiles || [];
+          activeProfileId = payload.active_profile_id || null;
+          lastServerConfig = payload.config || null;
+          currentProfileId = activeProfileId;
+          renderProfileList();
+          applyProfileSelection(currentProfileId);
+          setLlmStatus("Server config reset.");
+        } catch (error) {
+          console.error("LLM reset", error);
+          setLlmStatus(error.message || "Server could not reset.", true);
+        }
+      }
+
+      async function bootstrapLlmConfig() {
+        const serverState = await fetchServerLlmState();
+        if (serverState) {
+          llmProfiles = serverState.profiles || [];
+          activeProfileId = serverState.active_profile_id || null;
+          lastServerConfig = serverState.config || null;
+          currentProfileId = activeProfileId || (llmProfiles[0]?.id || null);
+          renderProfileList();
+          applyProfileSelection(currentProfileId);
+          setLlmStatus("Server-Profile geladen.");
+          return;
+        }
+        const stored = localStorage.getItem("cannabisLLMConfig");
+        if (stored) {
+          try {
+            applyConfig(JSON.parse(stored));
+            setLlmStatus("Lokale Config geladen.");
+            return;
+          } catch (error) {
+            console.warn("Fehler beim Laden der Config", error);
+          }
+        }
+        applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
+        setLlmStatus("Standard-Konfiguration aktiv.");
+      }
+
+      async function refreshTmModels() {
+        if (!tmList) return;
+        tmList.innerHTML = "<li>loading …</li>";
+        try {
+          const response = await fetch("/tm-models");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const payload = await response.json();
+          const models = payload.models || [];
+          if (!models.length) {
+            tmList.innerHTML = "<li>Noch keine Community-Modelle gespeichert.</li>";
+            if (tmDefaultNote)
+              tmDefaultNote.textContent = "Standard: OPENCORE Referenz (sofern TEACHABLE_MODEL_PATH gesetzt ist).";
+            if (tmClearBtn) tmClearBtn.disabled = true;
+            return;
+          }
+          tmList.innerHTML = "";
+          models.forEach((model) => {
+            const li = document.createElement("li");
+            const added = model.added ? new Date(model.added).toLocaleString() : "n/a";
+            const label = document.createElement("div");
+            label.innerHTML = `<strong>${model.name}</strong> <span class="pill">${formatModelType(
+              model.type
+            )}</span>`;
+            const meta = document.createElement("small");
+            const strainInfo = model.metadata?.labels?.join ? model.metadata.labels.join(", ") : "–";
+            meta.innerHTML = `Path: ${model.path}<br/>Labels: ${strainInfo}<br/>Added: ${added}`;
+            const defaultButton = document.createElement("button");
+            defaultButton.type = "button";
+            defaultButton.className = model.is_default ? "primary" : "secondary";
+            defaultButton.textContent = model.is_default ? "Standard aktiv" : "Als Standard setzen";
+            defaultButton.disabled = model.is_default;
+            defaultButton.style.marginTop = "0.5rem";
+            defaultButton.addEventListener("click", () => setDefaultTmModel(model.id));
+            li.appendChild(label);
+            li.appendChild(meta);
+            li.appendChild(defaultButton);
+            tmList.appendChild(li);
+          });
+          const active = models.find((model) => model.is_default);
+          if (tmDefaultNote) {
+            tmDefaultNote.textContent = active
+              ? `Standard im Analyzer: ${active.name}`
+              : "Standard: OPENCORE Referenz (TEACHABLE_MODEL_PATH).";
+          }
+          if (tmClearBtn) tmClearBtn.disabled = !active;
+        } catch (error) {
+          tmList.innerHTML = "<li>Fehler beim Laden der Modelle.</li>";
+          if (tmDefaultNote) tmDefaultNote.textContent = "Standard konnte nicht ermittelt werden.";
+          if (tmClearBtn) tmClearBtn.disabled = true;
+          console.error("TM load", error);
+        }
+      }
+
+      async function setDefaultTmModel(modelId) {
+        if (!modelId) return;
+        setTmStatus("Standard wird aktualisiert …");
+        try {
+          const response = await fetch(`/tm-models/default/${modelId}`, { method: "POST" });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Standard konnte nicht gesetzt werden.");
+          }
+          setTmStatus("Standardmodell gespeichert.");
+          await refreshTmModels();
+        } catch (error) {
+          setTmStatus(error.message, true);
+        }
+      }
+
+      async function clearDefaultTmModel() {
+        setTmStatus("Clearing default …");
+        try {
+          const response = await fetch("/tm-models/default", { method: "DELETE" });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Reset failed.");
+          }
+          setTmStatus("Standard entfernt. Der Analyzer nutzt jetzt die OPENCORE Referenz oder das erste Modell.");
+          await refreshTmModels();
+        } catch (error) {
+          setTmStatus(error.message, true);
+        }
+      }
+
+      async function uploadTmModel() {
+        const file = tmFileInput.files[0];
+        if (!file) {
+          setTmStatus("Please choose a ZIP file first.", true);
+          return;
+        }
+        const name = tmNameInput.value.trim() || file.name.replace(/\.zip$/i, "");
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("display_name", name);
+        formData.append("model_type", tmTypeSelect.value);
+        tmUploadBtn.disabled = true;
+        tmUploadBtn.textContent = "Wird hochgeladen…";
+        setTmStatus("Uploading …");
+        try {
+          const response = await fetch("/tm-models/upload", { method: "POST", body: formData });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Upload fehlgeschlagen");
+          }
+          setTmStatus("Modell erfolgreich gespeichert. Wir halten es unter /TM-models bereit.");
+          tmFileInput.value = "";
+          await refreshTmModels();
+        } catch (error) {
+          setTmStatus(error.message, true);
+        } finally {
+          tmUploadBtn.disabled = false;
+          tmUploadBtn.textContent = "ZIP installieren";
+        }
+      }
+
+      async function refreshNetworkStatus() {
+        if (!mdnsStatus) return;
+        mdnsStatus.textContent = "Status: loading …";
+        try {
+          const response = await fetch("/network/status");
+          if (!response.ok) throw new Error("HTTP " + response.status);
+          const payload = await response.json();
+          const status = payload.status || {};
+          const available = payload.mdns_available;
+          if (!available) {
+            mdnsStatus.textContent =
+              "zeroconf missing. Please run 'pip install zeroconf' so ottcolab.local can be announced.";
+            if (mdnsStartBtn) mdnsStartBtn.disabled = true;
+            if (mdnsStopBtn) mdnsStopBtn.disabled = true;
+            return;
+          }
+          if (mdnsHostInput) mdnsHostInput.value = status.hostname || "ottcolab.local";
+          if (mdnsPortInput) mdnsPortInput.value = status.port || 8000;
+          if (status.enabled) {
+            mdnsStatus.innerHTML =
+              `Broadcast aktiv: <strong>${status.hostname}</strong> → ${status.ip || "?"}. URL: <code>${status.url}</code>`;
+            if (mdnsStopBtn) mdnsStopBtn.disabled = false;
+          } else {
+            mdnsStatus.textContent = "Noch nicht aktiv. Host jetzt announcen, damit jedes Device im WLAN zugreifen kann.";
+            if (mdnsStopBtn) mdnsStopBtn.disabled = true;
+          }
+          if (mdnsStartBtn) {
+            mdnsStartBtn.disabled = false;
+            mdnsStartBtn.textContent = status.enabled ? "Broadcast neu setzen" : "Broadcast aktivieren";
+          }
+        } catch (error) {
+          mdnsStatus.textContent = "Status konnte nicht geladen werden.";
+          console.error("Network status", error);
+        }
+      }
+
+      async function startNetworkBroadcast() {
+        if (!mdnsHostInput || !mdnsPortInput) return;
+        const hostname = mdnsHostInput.value.trim() || "ottcolab.local";
+        const port = parseInt(mdnsPortInput.value, 10) || 8000;
+        if (mdnsStartBtn) {
+          mdnsStartBtn.disabled = true;
+          mdnsStartBtn.textContent = "Announcen …";
+        }
+        if (mdnsStatus) {
+          mdnsStatus.textContent = "Broadcast wird aktiviert …";
+        }
+        try {
+          const response = await fetch("/network/announce", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hostname, port }),
+          });
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || "Broadcast fehlgeschlagen");
+          }
+          await refreshNetworkStatus();
+        } catch (error) {
+          if (mdnsStatus) mdnsStatus.textContent = error.message;
+          console.error("Broadcast", error);
+        } finally {
+          if (mdnsStartBtn) {
+            mdnsStartBtn.disabled = false;
+            mdnsStartBtn.textContent = "Broadcast aktivieren";
+          }
+        }
+      }
+
+      async function stopNetworkBroadcast() {
+        if (mdnsStopBtn) mdnsStopBtn.disabled = true;
+        if (mdnsStatus) mdnsStatus.textContent = "Broadcast wird deaktiviert …";
+        try {
+          await fetch("/network/announce", { method: "DELETE" });
+          await refreshNetworkStatus();
+        } catch (error) {
+          if (mdnsStatus) mdnsStatus.textContent = "Broadcast konnte nicht gestoppt werden.";
+          console.error("Broadcast stop", error);
+        }
+      }
+
+      providerGroup.addEventListener("change", (event) => {
+        if (event.target.name === "provider") {
+          setActiveProvider(event.target.value);
+          if (event.target.value === "openai") {
+            apiBaseInput.value = "";
+            apiBaseInput.placeholder = "https://api.openai.com/v1";
+            modelInput.placeholder = "gpt-4.1-mini";
+          } else if (event.target.value === "ollama") {
+            apiBaseInput.placeholder = "http://127.0.0.1:11434";
+            modelInput.placeholder = "phi3.5-vision-mini";
+          } else {
+            apiBaseInput.placeholder = "http://127.0.0.1:1234/v1";
+            modelInput.placeholder = "granite-vision-3b-q4";
+          }
+          updatePreview();
+        }
+      });
+
+      if (providerSaveBtn) {
+        providerSaveBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          quickSaveProviderProfile();
+        });
+      }
+
+      [apiBaseInput, modelInput, apiKeyInput, visionSelect, promptText].forEach((el) =>
+        el.addEventListener("input", updatePreview)
+      );
+
+      if (llmProfileList) {
+        llmProfileList.addEventListener("change", (event) => applyProfileSelection(event.target.value));
+      }
+      if (llmProfileSave) {
+        llmProfileSave.addEventListener("click", () => {
+          setLlmStatus("Profil wird gespeichert …");
+          persistLlmConfig();
+        });
+      }
+      if (llmProfileNew) {
+        llmProfileNew.addEventListener("click", () => {
+          currentProfileId = null;
+          llmProfileName.value = "";
+          applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
+          updatePreview();
+          setLlmStatus("Neues Profil vorbereitet. Jetzt speichern.");
+        });
+      }
+      if (llmProfileDelete) {
+        llmProfileDelete.addEventListener("click", async () => {
+          if (!currentProfileId) {
+            setLlmStatus("No profile selected.", true);
+            return;
+          }
+          if (!confirm("Delete this profile?")) return;
+          try {
+            const response = await fetch(`/api/settings/llm/profiles/${currentProfileId}`, { method: "DELETE" });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.detail || "Server error while deleting");
+            applyLlmServerPayload(payload);
+            currentProfileId = payload.active_profile_id || null;
+            applyProfileSelection(currentProfileId);
+            setLlmStatus(payload.message || "Profil entfernt.");
+          } catch (error) {
+            setLlmStatus(error.message || "Profile could not be deleted.", true);
+          }
+        });
+      }
+      if (llmProfileActivate) {
+        llmProfileActivate.addEventListener("click", async () => {
+          if (!currentProfileId) {
+            setLlmStatus("No profile selected.", true);
+            return;
+          }
+          try {
+            const response = await fetch(`/api/settings/llm/profiles/${currentProfileId}/activate`, { method: "POST" });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(payload.detail || "Aktivierung fehlgeschlagen");
+            applyLlmServerPayload(payload);
+            applyProfileSelection(currentProfileId);
+            setLlmStatus(payload.message || "Aktives Profil aktualisiert.");
+          } catch (error) {
+            setLlmStatus(error.message || "Profil konnte nicht aktiviert werden.", true);
+          }
+        });
+      }
+
+      if (saveBtn) {
+        saveBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          persistLlmConfig();
+        });
+      }
+
+      if (llmTestBtn) {
+        llmTestBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          testLlmConfig();
+        });
+      }
+
+      if (resetBtn) {
+        resetBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          resetLlmConfig();
+        });
+      }
+
+      bootstrapLlmConfig();
+
+      if (tmUploadBtn) {
+        tmUploadBtn.addEventListener("click", uploadTmModel);
+      }
+      if (tmRefreshBtn) {
+        tmRefreshBtn.addEventListener("click", refreshTmModels);
+      }
+      if (tmClearBtn) {
+        tmClearBtn.addEventListener("click", clearDefaultTmModel);
+      }
+      refreshTmModels();
+
+      if (mdnsStartBtn) {
+        mdnsStartBtn.addEventListener("click", startNetworkBroadcast);
+      }
+      if (mdnsStopBtn) {
+        mdnsStopBtn.addEventListener("click", stopNetworkBroadcast);
+      }
+      refreshNetworkStatus();
+    </script>
+  </body>
+</html>

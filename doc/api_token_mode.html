@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>API Token Mode · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>API Token Mode</h1>
+      <p>Route analyzer calls to your own API base and bearer token.</p>
+      <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Setup</h2>
+      <ol>
+        <li>Open the settings gear in the UI.</li>
+        <li>Enter <strong>API Base URL</strong> and <strong>API Token</strong>.</li>
+        <li>Enable <strong>API Token Mode</strong> and save the profile.</li>
+        <li>Select the profile when running analyses or chat.</li>
+      </ol>
+      <p>Settings are stored in <code>localStorage</code> and in <code>/api/settings/llm</code> so they survive restarts.</p>
+    </section>
+
+    <section>
+      <h2>Code samples</h2>
+      <pre><code>curl -X POST "$BASE/api/opencore/analyze" \ 
+  -H "Authorization: Bearer $TOKEN" \ 
+  -F "prompt=Describe trichome maturity" \ 
+  -F "files[]=@sample.jpg"</code></pre>
+      <pre><code># Python
+import requests
+files = {"files[]": open("sample.jpg", "rb")}
+data = {"prompt": "Describe trichome maturity"}
+resp = requests.post(f"{base}/api/opencore/analyze", headers={"Authorization": f"Bearer {token}"}, files=files, data=data)
+print(resp.json())</code></pre>
+      <pre><code>// Node (fetch)
+const fd = new FormData();
+fd.append("prompt", "Describe trichome maturity");
+fd.append("files[]", fs.createReadStream("sample.jpg"));
+const r = await fetch(`${base}/api/opencore/analyze`, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${token}` },
+  body: fd,
+});
+console.log(await r.json());</code></pre>
+    </section>
+
+    <section>
+      <h2>Security</h2>
+      <ul>
+        <li>Tokens are only stored locally and sent with your requests.</li>
+        <li>Backend does not log tokens; remove them from saved profiles if you rotate credentials.</li>
+      </ul>
+    </section>
+  </body>
+</html>

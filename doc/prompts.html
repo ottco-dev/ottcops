@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Prompt Templates · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #fff;
+        color: #0f172a;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+      }
+      th,
+      td {
+        border: 1px solid #d5dae4;
+        padding: 0.75rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #f3f5fb;
+      }
+      pre {
+        background: #0f172a;
+        color: #f9fafc;
+        padding: 0.85rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Prompt Templates</h1>
+      <p>Templates speed up requests and keep analyses consistent.</p>
+      <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Built-in Templates</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Label</th>
+            <th>Description</th>
+            <th>Prompt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Trichome Maturity</td>
+            <td>Evaluates clear/milky/amber distribution and suggests a harvest window.</td>
+            <td>
+              <pre><code>Analyze the trichomes for Clear/Milky/Amber, describe the distribution, and estimate the optimal harvest window.</code></pre>
+            </td>
+          </tr>
+          <tr>
+            <td>Bud Health / Mold</td>
+            <td>Identifies mold, rot, or other bud issues.</td>
+            <td>
+              <pre><code>Inspect the image for mold, rot, or other bud-health problems and describe the risks.</code></pre>
+            </td>
+          </tr>
+          <tr>
+            <td>Pest Detection</td>
+            <td>Looks for visible pests or typical damage patterns.</td>
+            <td>
+              <pre><code>Analyze the image for visible pests or typical damage patterns and describe the findings.</code></pre>
+            </td>
+          </tr>
+          <tr>
+            <td>Bag Appeal</td>
+            <td>Visual rating of trim, structure, frost, and color.</td>
+            <td>
+              <pre><code>Rate the bag appeal: trim, structure, trichome density, color play, and overall impression.</code></pre>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>When to use which template</h2>
+      <ul>
+        <li><strong>Maturity:</strong> End of bloom checks; pair with macro photos.</li>
+        <li><strong>Mold:</strong> Any bud that looks off; good for intake QA.</li>
+        <li><strong>Pests:</strong> Leaf close-ups or canopy overviews for scouting.</li>
+        <li><strong>Bag Appeal:</strong> Finished product reviews or social-ready captures.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Custom templates (per browser)</h2>
+      <p>
+        You can store your own prompts in the browser. Use the “save template” button next to the prompt textarea, give it a label and description, and it will appear in the template selector. Everything is stored in <code>localStorage</code> for that browser profile.
+      </p>
+      <ul>
+        <li><strong>Save:</strong> Type your prompt → click “save template” → pick a name and summary.</li>
+        <li><strong>Apply:</strong> Choose it from the dropdown to replace the prompt textarea.</li>
+        <li><strong>Delete:</strong> Use the remove icon next to a custom entry to clear it.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Mini demo</h2>
+      <p>Pick any template in the analyzer UI; the textarea will be filled instantly and can still be edited before you run an analysis.</p>
+    </section>
+  </body>
+</html>
