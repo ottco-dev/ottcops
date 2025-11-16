@@ -79,5 +79,20 @@
         <li>Units are optional but help LLM clarity (e.g., % for humidity, ppm for CO₂, µmol/m²/s for PPFD).</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Backend:</strong> <code>load_mqtt_config()</code> and <code>save_mqtt_config()</code> in <code>app.py</code> persist broker and sensor entries. <code>poll_mqtt_sensors()</code> performs a one-shot fetch; wrap it in your own scheduler if you want continuous polling.</li>
+        <li><strong>Frontend:</strong> <code>refreshMqttSensors()</code> in <code>static/js/app.js</code> pulls readings and renders draggable chips. The function is optional—skip calling it if you only need static prompts.</li>
+        <li><strong>Prompt insertion:</strong> <code>insertPromptText()</code> handles chip drops. Reuse it to add other data sources (e.g., weather, lab results) as modular prompt fragments.</li>
+      </ul>
+      <pre><code>// Fetch sensors without touching the UI
+const data = await performApiRequest('/api/mqtt/poll', { method: 'POST' });
+const humidity = data.values.find(v => v.kind === 'humidity');
+if (humidity) insertPromptText(`Humidity: ${humidity.value}${humidity.unit || ''}`);
+</code></pre>
+      <p>Tip: keep topics scoped (e.g., <code>growtent/sensors/humidity</code>) so the UI labels stay short when inserted into prompts.</p>
+    </section>
   </body>
 </html>

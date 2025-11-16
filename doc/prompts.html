@@ -136,5 +136,23 @@
       <h2>Mini demo</h2>
       <p>Pick any template in the analyzer UI; the textarea will be filled instantly and can still be edited before you run an analysis.</p>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Template data:</strong> <code>PROMPT_TEMPLATES</code> lives in <code>static/js/app.js</code>. Each object keeps <code>id</code>, <code>label</code>, <code>description</code>, and <code>prompt</code>, so you can add more presets without touching HTML.</li>
+        <li><strong>UI rendering:</strong> <code>renderPromptTemplates()</code> builds the dropdown/buttons, and <code>applyTemplate(text)</code> swaps the textarea content. Both are standalone functions—import them into another page if you want a slim prompt picker.</li>
+        <li><strong>Custom storage:</strong> <code>saveCustomTemplate()</code> and <code>loadCustomTemplates()</code> persist optional user-defined prompts in <code>localStorage</code>. They only run when invoked, so you can disable them by removing the “Save template” button.</li>
+      </ul>
+      <pre><code>// Add a new preset programmatically
+PROMPT_TEMPLATES.push({
+  id: "canopy_check",
+  label: "Canopy Stress Scan",
+  description: "Look for bleaching and wind burn",
+  prompt: "Scan canopy for bleaching, wind burn, or light stress indicators."
+});
+renderPromptTemplates();</code></pre>
+      <p>Tip: keep templates short and composable. If you rely on MQTT sensor chips, drop only the numeric values into the prompt instead of hardcoding numbers in the template.</p>
+    </section>
   </body>
 </html>

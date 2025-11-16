@@ -70,5 +70,20 @@
         Snapshots can be taken every few seconds, but full ML+LLM batches are typically scheduled every ~30 seconds to avoid overload. Adjust intervals to match hardware limits.
       </p>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Stream manager:</strong> <code>StreamManager</code> in <code>app.py</code> owns creation, snapshots, overlays, and scheduling. It consumes <code>analysis_mode</code> and <code>llm_profile</code> the same way the main analyzer does.</li>
+        <li><strong>Endpoints:</strong> <code>/api/opencore/streams</code> (list/create), <code>/api/opencore/streams/{id}/run</code> (manual trigger), <code>/api/opencore/streams/{id}/overlay.jpg</code> (preview). You can mount these under another router if you want a dedicated stream service.</li>
+        <li><strong>Front-end widgets:</strong> <code>renderStreamCards()</code> and <code>createStream()</code> in <code>static/js/app.js</code> populate the dashboard. Remove them if you only consume streams through the API.</li>
+      </ul>
+      <pre><code>// Trigger a stream from a custom UI
+await performApiRequest(`/api/opencore/streams/${streamId}/run`, { method: 'POST' });
+const overlayUrl = `/api/opencore/streams/${streamId}/overlay.jpg?cache=${Date.now()}`;
+document.querySelector('#overlayPreview').src = overlayUrl;
+</code></pre>
+      <p>Tip: lower <code>interval_seconds</code> on slow hardware and disable overlays by omitting the overlay fetch if you only need JSON.</p>
+    </section>
   </body>
 </html>

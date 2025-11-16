@@ -92,5 +92,21 @@ rest:
 </code></pre>
       <p>No numeric scores are used—automations rely on text/JSON fields.</p>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Endpoints to call:</strong> <code>/api/opencore/analyze</code> (single), <code>/api/opencore/analyze-batch</code> (multi), and <code>/api/opencore/streams</code> (automation jobs) all live in <code>app.py</code> and return JSON with optional <code>debug</code> blocks.</li>
+        <li><strong>Python helper:</strong> In <code>doc/python_api.html</code> you can copy the <code>requests</code> sample to script uploads from Home Assistant or cron jobs. It is only a client snippet—no extra dependencies are required server-side.</li>
+        <li><strong>MQTT + prompts:</strong> Use <code>refreshMqttSensors()</code> in <code>static/js/app.js</code> or call <code>/api/mqtt/poll</code> directly from your automation to fetch current readings and embed them into prompts.</li>
+      </ul>
+      <pre><code># Minimal Python cron for a sensor camera
+files = {'file': open('latest.jpg', 'rb')}
+resp = requests.post('http://localhost:8000/api/opencore/analyze', files=files, data={'prompt': 'Check mold risk'}).json()
+if 'mold' in resp.get('analysis', {}).get('text', '').lower():
+    notify_team()
+</code></pre>
+      <p>Tip: keep automation small and stateless—fetch sensor values right before calling the analyzer so LLM prompts always contain fresh numbers.</p>
+    </section>
   </body>
 </html>

@@ -88,5 +88,28 @@ function registerCustomAction() {
         <li>Use the debug panel to confirm request IDs and timings for new routes.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Backend structure:</strong> Shared utilities live in <code>opencore/</code>. Create a new module (e.g., <code>opencore/my_feature.py</code>) and import it in <code>app.py</code> to register routes without touching existing handlers.</li>
+        <li><strong>Front-end wiring:</strong> The controller in <code>static/js/app.js</code> exposes small, composable helpers like <code>performApiRequest()</code> and <code>insertPromptText()</code>. Import only what you need into a new script tag for your module page.</li>
+        <li><strong>Documentation links:</strong> Every new page should add itself to <code>doc/index.html</code> navigation; copy the nav block to stay consistent.</li>
+      </ul>
+      <pre><code>// Example: add a small backend route
+from fastapi import APIRouter
+router = APIRouter()
+
+@router.get('/api/custom/ping')
+def ping():
+    return {'status': 'ok'}
+
+# in app.py
+from opencore import config
+from my_feature import router as custom_router
+app.include_router(custom_router)
+</code></pre>
+      <p>Tip: keep modules optional—guard imports with environment variables if you only want them in certain deployments.</p>
+    </section>
   </body>
 </html>

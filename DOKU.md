@@ -53,3 +53,9 @@ Additional persistence files:
 
 ## 8. License & Usage
 OPENCORE Analyzer is free for private individuals and developer testing. Cannabis Social Clubs (CSCs) and companies must contact <https://ottcouture.eu> to license commercial use. Feedback: otcdmin@outlook.com, Instagram @ottcouture.eu, Discord discord.gg/GMMSqePfPh.
+
+## 9. Code reference & modular tips
+- **Shared utils:** Common constants and logging live in `opencore/config.py` and `opencore/logging_utils.py`; import only what you need for new routers to keep changes isolated.
+- **Settings store:** `opencore/settings_store.py` provides getters/setters for LLM profiles, MQTT brokers, and TM registry entries. Each helper is optional—reuse them in a new FastAPI router instead of reimplementing persistence.
+- **Front-end helpers:** `static/js/app.js` is organized by feature (templates, uploads, streams, MQTT, exports). Each block is guarded by element checks so you can drop unused sections from HTML without breaking the rest of the page.
+- **Adaptation pattern:** Mirror the existing request/response shape (`status`, `analysis`, `debug`) when adding endpoints. Doing so lets the analyzer UI, batch renderer, and exports pick up new functionality without additional wiring.

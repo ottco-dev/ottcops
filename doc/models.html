@@ -59,5 +59,20 @@
         <li>ML-only mode warms up the selected bundle during startup to reduce first-run latency.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Model registry:</strong> <code>opencore/settings_store.py</code> exposes <code>load_tm_registry()</code> and <code>save_tm_registry()</code>. They keep models modular—call them in custom routers to add/remove entries without touching the UI.</li>
+        <li><strong>Artifact detection:</strong> <code>ensure_model_artifact()</code> and <code>_discover_model_artifact()</code> in <code>app.py</code> detect SavedModel folders, TFJS bundles, and <code>.keras/.h5/.hdf5</code> exports. Use them before inference to normalize inputs.</li>
+        <li><strong>ML-only entry point:</strong> <code>perform_ml_only()</code> wraps preprocessing and classification so you can reuse it in new endpoints (e.g., a CLI or a cron worker) without the LLM layer.</li>
+      </ul>
+      <pre><code># Example: load a model path manually
+from app import ensure_model_artifact, load_tf_model
+artifact = ensure_model_artifact(Path('TM-models/my-model'))
+model = load_tf_model(artifact)
+</code></pre>
+      <p>Tip: keep labels with the bundle (<code>labels.txt</code>); the loader reads them automatically and passes them downstream to the UI and JSON outputs.</p>
+    </section>
   </body>
 </html>

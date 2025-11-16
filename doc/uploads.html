@@ -101,5 +101,19 @@ DELETE /api/uploads/{id}          # remove upload + overlay
 POST   /api/opencore/analyze-video # analyze MP4 or existing upload_id</code></pre>
       <p>All endpoints honor API token mode and the shared LLM profile configuration documented elsewhere in this portal.</p>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Upload registry:</strong> Functions like <code>list_uploads()</code>, <code>save_upload()</code>, and <code>delete_upload()</code> in <code>app.py</code> manage media metadata and file paths. They are optional; if you skip them, the analyzer still handles one-off uploads.</li>
+        <li><strong>Video analysis:</strong> <code>analyze_video_upload()</code> samples frames, runs ML/LLM/Hybrid modes, and writes overlay MP4s. Call it with your own storage paths if you host uploads elsewhere.</li>
+        <li><strong>Front-end management:</strong> <code>renderUploadLibrary()</code> and <code>deleteUpload()</code> in <code>static/js/app.js</code> build the library UI. You can reuse them inside another page by providing container IDs.</li>
+      </ul>
+      <pre><code>// Delete an upload programmatically
+await performApiRequest(`/api/opencore/uploads/${id}`, { method: 'DELETE' });
+renderUploadLibrary();
+</code></pre>
+      <p>Tip: store large videos outside the repo and point the registry at that directory via <code>UPLOADS_DIR</code> to keep deployments lean.</p>
+    </section>
   </body>
 </html>

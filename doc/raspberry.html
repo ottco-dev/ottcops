@@ -56,5 +56,18 @@ OTTC_SKIP_UPDATE_CHECK=1 uvicorn app:app --host 0.0.0.0 --port 8000</code></pre>
         <li>Schedule snapshots every 5 seconds and batch analysis every ~30 seconds to avoid overload.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Systemd/cron:</strong> Use the sample <code>python_api</code> snippets with <code>crontab</code> or <code>systemd</code> timers to snapshot a Pi camera and POST to <code>/api/opencore/analyze</code>.</li>
+        <li><strong>Streams:</strong> <code>/api/opencore/streams</code> accepts RTSP/USB/HTTP sources. The <code>StreamManager</code> class in <code>app.py</code> handles scheduling; you can reduce interval/retention when running on constrained Pi hardware.</li>
+        <li><strong>Overlay previews:</strong> Fetch <code>/api/opencore/streams/{id}/overlay.jpg</code> to render annotations in a lightweight dashboard without running the full UI.</li>
+      </ul>
+      <pre><code># Pi-friendly curl sample
+curl -X POST -F "file=@capture.jpg" -F "prompt=Quick health check"   http://localhost:8000/api/opencore/analyze
+</code></pre>
+      <p>Tip: disable heavy features (PDF export, share links) on the Pi by hiding their buttons in HTML; the core analyzer endpoints work fine without them.</p>
+    </section>
   </body>
 </html>

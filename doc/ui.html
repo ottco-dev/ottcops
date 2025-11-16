@@ -67,5 +67,22 @@
         <li>Close via the top-right button to return to the normal layout.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Drag &amp; drop:</strong> <code>wireDropzone()</code> and <code>renderImagePreviews()</code> in <code>static/js/app.js</code> are standalone; call them with your own input/preview selectors to reuse the behavior.</li>
+        <li><strong>Theme switch:</strong> <code>toggleTheme()</code> flips <code>theme-dark/theme-light</code> classes on <code>body</code> and saves to <code>localStorage</code>. Drop the toggle if you want a fixed style.</li>
+        <li><strong>JSON fullscreen:</strong> <code>openJsonFullscreen()</code> renders an overlay for any JSON string. You can point it at another textarea or API response for quick inspections.</li>
+      </ul>
+      <pre><code>// Reuse dropzone on another page
+wireDropzone({
+  dropzoneId: 'myDrop',
+  fileInputId: 'myFileInput',
+  onFiles: files => renderImagePreviews(files, document.getElementById('myPreview'))
+});
+</code></pre>
+      <p>Tip: every widget is optional—include only the HTML blocks you need and the JS will gracefully ignore missing elements.</p>
+    </section>
   </body>
 </html>

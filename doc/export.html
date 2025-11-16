@@ -55,5 +55,19 @@
         <li>Open the link or send it to teammates; the static viewer renders the stored payload.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>JSON download:</strong> <code>downloadJson()</code> in <code>static/js/app.js</code> stringifies the current result and triggers a blob download. Pass any object to reuse it in your own UI.</li>
+        <li><strong>PDF export:</strong> <code>exportPdf()</code> uses <code>window.jsPDF</code> when available and falls back gracefully if the library is absent—keep it optional by loading the script only on pages that need PDF.</li>
+        <li><strong>Share links:</strong> Backend route <code>/api/opencore/share</code> persists payloads via <code>save_share_payload()</code> in <code>app.py</code>; the viewer at <code>/share/{id}</code> reads the same store. You can override the storage path via <code>SHARE_STORE_DIR</code>.</li>
+      </ul>
+      <pre><code>// Trigger a JSON-only export from another page
+const payload = { summary: res.summary, items: res.items };
+downloadJson(payload, 'custom-export.json');
+</code></pre>
+      <p>Tip: keep exports modular—only render the buttons you need (JSON, PDF, share) to avoid pulling extra scripts into minimal deployments.</p>
+    </section>
   </body>
 </html>

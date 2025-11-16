@@ -78,5 +78,24 @@
         <li><strong>High total_ms:</strong> Network + model + LLM combined; stream sources can add delay.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Backend hooks:</strong> <code>build_debug_payload()</code> in <code>app.py</code> assembles <code>request_id</code>, timings, and model identifiers. Call it in your own routes to reuse the same structure.</li>
+        <li><strong>Frontend panel:</strong> <code>renderDebugPanel(payload)</code> in <code>static/js/app.js</code> renders the collapsible debug block. It runs only when <code>debugEnabled()</code> is true (toggle or <code>?debug=1</code>), keeping the feature optional.</li>
+        <li><strong>Timing helpers:</strong> ML and LLM wrappers measure <code>model_ms</code> and <code>llm_ms</code>; use the same pattern (<code>performance.now()</code>) for any new async call you add.</li>
+      </ul>
+      <pre><code>// Example: attach debug info to a custom call
+const started = performance.now();
+const res = await performApiRequest('/api/custom');
+const debug = {
+  request_id: res.debug?.request_id || crypto.randomUUID(),
+  timings: { total_ms: performance.now() - started }
+};
+renderDebugPanel({ debug, response: res });
+</code></pre>
+      <p>Tip: keep the panel small—truncate large payloads before rendering to avoid UI lag.</p>
+    </section>
   </body>
 </html>

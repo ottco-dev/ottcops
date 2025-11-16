@@ -92,5 +92,26 @@ console.log(await r.json());</code></pre>
         <li>Backend does not log tokens; remove them from saved profiles if you rotate credentials.</li>
       </ul>
     </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Backend:</strong> <code>opencore/settings_store.py</code> exposes <code>load_llm_profiles()</code> and <code>save_llm_profile(profile)</code>. Profiles store base URL, token, model, and system prompt. You can call these helpers from your own FastAPI routers to keep configuration centralized.</li>
+        <li><strong>Frontend:</strong> <code>openApiTokenModal()</code> and <code>saveApiTokenSettings()</code> in <code>static/js/app.js</code> read/write the modal fields and persist them via <code>/api/settings/llm</code>. They are optional—if you skip rendering the modal, the analyzer falls back to local defaults.</li>
+        <li><strong>Request wrapper:</strong> <code>performApiRequest(path, options)</code> automatically injects <code>Authorization</code> when a profile is active. Reuse this helper for new fetch calls to keep token handling consistent.</li>
+      </ul>
+      <pre><code>// Example: save a custom profile then test it
+await saveApiTokenSettings({
+  name: "lab-openai",
+  baseUrl: "https://api.openai.com/v1",
+  apiToken: "sk-...",
+  model: "gpt-4o-mini",
+  systemPrompt: "Keep answers concise."
+});
+const probe = await testLlmProfile("lab-openai");
+console.log(probe.status, probe.latency_ms);
+</code></pre>
+      <p>Tip: keep profiles small and declarative. If you need environment-specific tokens, inject them server-side in <code>settings_store</code> so the UI never exposes them.</p>
+    </section>
   </body>
 </html>
