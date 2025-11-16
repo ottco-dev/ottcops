@@ -56,6 +56,8 @@ const state = {
   activeLlmProfileId: null,
   selectedLlmProfileId: null,
   uploads: [],
+  mqttConfig: { broker: "", port: 1883, username: "", password: "", use_tls: false, sensors: [] },
+  mqttValues: [],
 };
 
 const dom = {};
@@ -68,6 +70,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadModels();
   loadLlmProfiles();
   loadUploads();
+  loadMqttConfig();
   applyDebugFromQuery();
   updatePreviewGrid();
   renderResultPlaceholder();
@@ -151,6 +154,9 @@ function cacheDom() {
   dom.libraryUploadBtn = document.getElementById("libraryUploadBtn");
   dom.uploadSort = document.getElementById("uploadSort");
   dom.uploadList = document.getElementById("uploadList");
+  dom.sensorChipContainer = document.getElementById("sensorChipContainer");
+  dom.sensorStatus = document.getElementById("sensorStatus");
+  dom.refreshSensors = document.getElementById("refreshSensors");
 }
 
 function initTheme() {
@@ -275,6 +281,13 @@ function bindEvents() {
   if (dom.uploadSort) {
     dom.uploadSort.addEventListener("change", () => loadUploads(dom.uploadSort.value));
   }
+  if (dom.refreshSensors) {
+    dom.refreshSensors.addEventListener("click", refreshMqttValues);
+  }
+  if (dom.prompt) {
+    dom.prompt.addEventListener("dragover", (event) => event.preventDefault());
+    dom.prompt.addEventListener("drop", handlePromptDrop);
+  }
   window.addEventListener("keyup", (event) => {
     if (event.key === "Escape") {
       [dom.templateModal, dom.apiModal, dom.jsonFullscreen, dom.imageModal].forEach(closeModal);
@@ -318,6 +331,76 @@ function handleTemplateSelect() {
   if (template && dom.prompt) {
     dom.prompt.value = template.prompt;
   }
+}
+
+async function loadMqttConfig() {
+  try {
+    const payload = await apiRequest("/api/mqtt/config");
+    state.mqttConfig = payload.config || state.mqttConfig;
+    renderSensorChips();
+  } catch (error) {
+    setSensorStatus(`MQTT settings unavailable: ${error.message}`, true);
+  }
+}
+
+async function refreshMqttValues() {
+  try {
+    setSensorStatus("Polling broker …");
+    const payload = await apiRequest("/api/mqtt/poll", { method: "POST" });
+    state.mqttValues = payload.values || [];
+    renderSensorChips();
+    setSensorStatus(`Received ${payload.count || state.mqttValues.length} readings.`);
+  } catch (error) {
+    setSensorStatus(error.message || "MQTT poll failed.", true);
+  }
+}
+
+function setSensorStatus(message, isError = false) {
+  if (!dom.sensorStatus) return;
+  dom.sensorStatus.textContent = message;
+  dom.sensorStatus.style.color = isError ? "#ff9393" : "var(--muted)";
+}
+
+function renderSensorChips() {
+  if (!dom.sensorChipContainer) return;
+  dom.sensorChipContainer.innerHTML = "";
+  const valuesById = {};
+  state.mqttValues.forEach((entry) => {
+    if (entry.id) valuesById[entry.id] = entry;
+  });
+  if (!state.mqttConfig.sensors || !state.mqttConfig.sensors.length) {
+    setSensorStatus("Add MQTT sensors in the config hub.");
+    return;
+  }
+  state.mqttConfig.sensors.forEach((sensor) => {
+    const valueEntry = valuesById[sensor.id] || {};
+    const chip = document.createElement("div");
+    chip.className = "chip";
+    chip.draggable = true;
+    chip.dataset.text = `${sensor.label || sensor.topic}: ${valueEntry.value ?? "<value pending>"}`;
+    chip.innerHTML = `<strong>${sensor.label || sensor.topic}</strong><span>${valueEntry.value ?? "No recent value"}${
+      sensor.unit ? " " + sensor.unit : ""
+    }</span>`;
+    chip.addEventListener("dragstart", (event) => {
+      event.dataTransfer.setData("text/plain", chip.dataset.text);
+    });
+    chip.addEventListener("click", () => insertSensorSnippet(chip.dataset.text));
+    dom.sensorChipContainer.appendChild(chip);
+  });
+}
+
+function handlePromptDrop(event) {
+  event.preventDefault();
+  const text = event.dataTransfer.getData("text/plain");
+  if (text) insertSensorSnippet(text);
+}
+
+function insertSensorSnippet(text) {
+  if (!dom.prompt) return;
+  const current = dom.prompt.value;
+  const separator = current && !current.endsWith("\n") ? "\n" : "";
+  dom.prompt.value = `${current}${separator}${text}`;
+  dom.prompt.focus();
 }
 
 function saveCustomTemplate() {

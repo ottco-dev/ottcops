@@ -15,6 +15,7 @@ The OTTCOPS analyzer from [ottcouture.eu](https://ottcouture.eu) combines Teacha
 - 🔐 **API token mode**: custom base URL + token with code samples.
 - 📤 **Export bundle**: JSON download, PDF report, and share links via `/api/opencore/share` + viewer (`/share/<id>`).
 - 🧷 **ML-only analysis mode**: `analysis_mode=ml` returns Teachable Machine JSON without GPT.
+- 📡 **MQTT sensor prompts**: broker-backed CO₂/PPFD/humidity/temperature/EC/pH values drop into prompts via drag-and-drop chips.
 - 🎞️ **Video uploads + media library**: upload MP4s or reuse stored assets, generate overlay previews, and manage (sort/rename/delete) uploads.
 - 🧮 **Selectable analysis pipelines**: choose ML-only, LLM-only, or Hybrid for manual runs, batch jobs, streams, and video clips.
 - 🎥 **Stream orchestration**: snapshot/RTSP sources run as background jobs (5 s capture, 30 s batch) and produce automated reports.

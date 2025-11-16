@@ -71,3 +71,13 @@ ANALYZER_SYSTEM_PROMPT = (
 LOG_LEVEL = os.getenv("OTTC_LOG_LEVEL", "INFO").upper()
 UPSTREAM_REPO_URL = os.getenv("OTTC_REPO_URL", "https://github.com/ottco-dev/ottcops.git")
 UPSTREAM_REPO_BRANCH = os.getenv("OTTC_REPO_BRANCH", "main")
+
+MQTT_DEFAULT_CONFIG: Dict[str, object] = {
+    "broker": "",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "use_tls": False,
+    "sensors": [],
+}
+MQTT_SENSOR_KINDS = {"co2", "ppfd", "lux", "humidity", "temperature", "ec", "ph"}

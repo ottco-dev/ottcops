@@ -383,8 +383,47 @@
           </div>
         </section>
 
+        <section class="card" id="mqtt-card">
+          <h2>5. MQTT sensors</h2>
+          <p>
+            Connect greenhouse sensors via MQTT (CO₂, PPFD/LUX, humidity, temperature, EC, pH). Values can be dragged into prompts on
+            the analyzer to ground LLM answers in live telemetry.
+          </p>
+          <div class="grid two">
+            <label>
+              <span>Broker host</span>
+              <input id="mqtt-broker" type="text" placeholder="192.168.0.20" />
+            </label>
+            <label>
+              <span>Port</span>
+              <input id="mqtt-port" type="number" min="1" max="65535" placeholder="1883" />
+            </label>
+            <label>
+              <span>Username (optional)</span>
+              <input id="mqtt-username" type="text" placeholder="user" />
+            </label>
+            <label>
+              <span>Password (optional)</span>
+              <input id="mqtt-password" type="password" placeholder="••••" />
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 0.5rem">
+              <input id="mqtt-tls" type="checkbox" />
+              Use TLS
+            </label>
+          </div>
+          <h3>Sensor topics</h3>
+          <p class="cta">Define each sensor (topic + label). Supported kinds: CO2, PPFD/LUX, humidity, temperature, EC, pH.</p>
+          <div id="mqtt-sensor-list" class="grid two"></div>
+          <div class="actions" style="margin-top: 0.75rem; gap: 0.5rem">
+            <button class="secondary" id="mqtt-add-sensor" type="button">Add sensor</button>
+            <button class="primary" id="mqtt-save" type="button">Save MQTT config</button>
+            <button class="secondary" id="mqtt-poll" type="button">Test &amp; fetch values</button>
+          </div>
+          <p id="mqtt-status" class="cta" style="display: none"></p>
+        </section>
+
         <section class="card" id="tm-depot">
-          <h2>5. OTTCOUTURE Teachable Machine depot</h2>
+          <h2>6. OTTCOUTURE Teachable Machine depot</h2>
           <p>
             Upload a ZIP (TFJS with <code>metadata.json</code>/<code>model.json</code>/<code>weights.bin</code> or Keras with
             <code>keras_model.h5</code> + <code>labels.txt</code>), choose the type, and we pin the bundle under <code>/TM-models</code>.
@@ -580,11 +619,23 @@
       const llmProfileActiveToggle = document.getElementById("llm-profile-active");
       const llmTestBtn = document.getElementById("llm-test-btn");
       const llmTestStatus = document.getElementById("llm-test-status");
+      const mqttBroker = document.getElementById("mqtt-broker");
+      const mqttPort = document.getElementById("mqtt-port");
+      const mqttUsername = document.getElementById("mqtt-username");
+      const mqttPassword = document.getElementById("mqtt-password");
+      const mqttTls = document.getElementById("mqtt-tls");
+      const mqttSensorList = document.getElementById("mqtt-sensor-list");
+      const mqttAddSensor = document.getElementById("mqtt-add-sensor");
+      const mqttSaveBtn = document.getElementById("mqtt-save");
+      const mqttPollBtn = document.getElementById("mqtt-poll");
+      const mqttStatus = document.getElementById("mqtt-status");
 
       let llmProfiles = [];
       let activeProfileId = null;
       let currentProfileId = null;
       let lastServerConfig = null;
+      let mqttConfig = { broker: "", port: 1883, username: "", password: "", use_tls: false, sensors: [] };
+      let mqttKinds = ["co2", "ppfd", "lux", "humidity", "temperature", "ec", "ph"];
 
       function setActiveProvider(value) {
         providerGroup.querySelectorAll(".provider").forEach((el) => {
@@ -872,6 +923,130 @@
         }
         applyConfig({ provider: "openai", vision: "yes", systemPrompt: PROMPTS[0].text });
         setLlmStatus("Standard-Konfiguration aktiv.");
+      }
+
+      function setMqttStatus(message, isError = false) {
+        if (!mqttStatus) return;
+        mqttStatus.style.display = "block";
+        mqttStatus.textContent = message;
+        mqttStatus.style.color = isError ? "#ff9f9f" : "#c7ffe2";
+      }
+
+      function renderMqttSensors() {
+        if (!mqttSensorList) return;
+        mqttSensorList.innerHTML = "";
+        const sensors = mqttConfig.sensors || [];
+        if (!sensors.length) {
+          const empty = document.createElement("p");
+          empty.textContent = "No sensors defined yet.";
+          mqttSensorList.appendChild(empty);
+          return;
+        }
+        sensors.forEach((sensor, idx) => {
+          const wrapper = document.createElement("div");
+          wrapper.style.padding = "1rem";
+          wrapper.style.border = "1px solid rgba(255,255,255,0.12)";
+          wrapper.style.borderRadius = "16px";
+          wrapper.innerHTML = `
+            <label><span>Label</span><input data-field="label" data-idx="${idx}" type="text" value="${
+              sensor.label || ""
+            }" /></label>
+            <label><span>Topic</span><input data-field="topic" data-idx="${idx}" type="text" value="${
+              sensor.topic || ""
+            }" /></label>
+            <label><span>Kind</span><select data-field="kind" data-idx="${idx}"></select></label>
+            <label><span>Unit</span><input data-field="unit" data-idx="${idx}" type="text" value="${
+              sensor.unit || ""
+            }" /></label>
+            <button type="button" data-action="remove" data-idx="${idx}" style="margin-top:0.5rem">Remove</button>
+          `;
+          const select = wrapper.querySelector("select[data-field='kind']");
+          mqttKinds.forEach((kind) => {
+            const opt = document.createElement("option");
+            opt.value = kind;
+            opt.textContent = kind.toUpperCase();
+            if ((sensor.kind || "").toLowerCase() === kind) opt.selected = true;
+            select.appendChild(opt);
+          });
+          wrapper.querySelectorAll("input, select, button").forEach((el) => {
+            if (el.dataset.action === "remove") {
+              el.addEventListener("click", () => {
+                mqttConfig.sensors.splice(idx, 1);
+                renderMqttSensors();
+              });
+            } else {
+              el.addEventListener("change", (event) => {
+                const field = event.target.dataset.field;
+                mqttConfig.sensors[idx][field] = event.target.value;
+              });
+            }
+          });
+          mqttSensorList.appendChild(wrapper);
+        });
+      }
+
+      function addMqttSensor() {
+        mqttConfig.sensors = mqttConfig.sensors || [];
+        mqttConfig.sensors.push({ label: "", topic: "", kind: mqttKinds[0], unit: "" });
+        renderMqttSensors();
+      }
+
+      async function bootstrapMqttConfig() {
+        try {
+          const response = await fetch("/api/mqtt/config");
+          const payload = await response.json();
+          if (!response.ok) throw new Error(payload.detail || "MQTT config failed");
+          mqttConfig = payload.config || mqttConfig;
+          mqttKinds = payload.kinds || mqttKinds;
+          mqttBroker.value = mqttConfig.broker || "";
+          mqttPort.value = mqttConfig.port || 1883;
+          mqttUsername.value = mqttConfig.username || "";
+          mqttTls.checked = !!mqttConfig.use_tls;
+          mqttPassword.value = "";
+          renderMqttSensors();
+          setMqttStatus("MQTT config loaded.");
+        } catch (error) {
+          setMqttStatus(error.message || "MQTT config could not be loaded.", true);
+        }
+      }
+
+      async function persistMqttConfig() {
+        const payload = {
+          broker: mqttBroker.value.trim(),
+          port: Number(mqttPort.value || 1883),
+          username: mqttUsername.value.trim(),
+          password: mqttPassword.value,
+          use_tls: mqttTls.checked,
+          sensors: mqttConfig.sensors || [],
+        };
+        try {
+          const response = await fetch("/api/mqtt/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "MQTT save failed");
+          mqttConfig = data.config || mqttConfig;
+          mqttPassword.value = "";
+          renderMqttSensors();
+          setMqttStatus(data.message || "MQTT settings saved.");
+        } catch (error) {
+          setMqttStatus(error.message || "MQTT save failed.", true);
+        }
+      }
+
+      async function pollMqtt() {
+        try {
+          setMqttStatus("Polling broker …");
+          const response = await fetch("/api/mqtt/poll", { method: "POST" });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.detail || "MQTT poll failed");
+          const summary = (data.values || []).map((v) => `${v.label || v.topic}: ${v.value}${v.unit ? " " + v.unit : ""}`);
+          setMqttStatus(summary.join(" | ") || "No values received yet.");
+        } catch (error) {
+          setMqttStatus(error.message || "MQTT poll failed.", true);
+        }
       }
 
       async function refreshTmModels() {
@@ -1177,7 +1352,12 @@
         });
       }
 
+      if (mqttAddSensor) mqttAddSensor.addEventListener("click", addMqttSensor);
+      if (mqttSaveBtn) mqttSaveBtn.addEventListener("click", persistMqttConfig);
+      if (mqttPollBtn) mqttPollBtn.addEventListener("click", pollMqtt);
+
       bootstrapLlmConfig();
+      bootstrapMqttConfig();
 
       if (tmUploadBtn) {
         tmUploadBtn.addEventListener("click", uploadTmModel);

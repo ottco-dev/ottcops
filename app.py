@@ -39,6 +39,11 @@ from PIL import Image, ImageDraw, ImageFont
 from pydantic import BaseModel, Field
 import requests
 
+try:  # pragma: no cover - optional dependency for MQTT sensors
+    from paho.mqtt import client as mqtt_client  # type: ignore
+except ImportError:  # pragma: no cover - gracefully degrade when MQTT is missing
+    mqtt_client = None
+
 try:
     import tensorflow as tf
 except ImportError as exc:  # pragma: no cover - only triggered when TF missing
@@ -77,6 +82,8 @@ from opencore.config import (
     MODEL_TYPE_ALIASES,
     NETWORK_CONFIG_FILENAME,
     NETWORK_DEFAULT_CONFIG,
+    MQTT_DEFAULT_CONFIG,
+    MQTT_SENSOR_KINDS,
     OLLAMA_BASE_URL,
     OPENAI_BASE_URL,
     SETTINGS_PATH,
@@ -104,8 +111,10 @@ from opencore.settings_store import (
     get_default_model_id,
     get_llm_config,
     get_llm_profiles,
+    get_mqtt_config,
     normalize_llm_config,
     persist_llm_config,
+    persist_mqtt_config,
     reset_llm_config,
     set_active_llm_profile,
     set_default_model_id,
@@ -429,6 +438,15 @@ class LLMProfilePayload(BaseModel):
     activate: bool = True
 
 
+class MQTTConfigPayload(BaseModel):
+    broker: str = ""
+    port: int = 1883
+    username: str = ""
+    password: str = ""
+    use_tls: bool = False
+    sensors: List[Dict[str, Any]] = Field(default_factory=list)
+
+
 def get_effective_model_name(config: Dict[str, Any], fallback: str = GPT_MODEL) -> str:
     candidate = (config.get("model") or fallback or GPT_MODEL).strip()
     return candidate or GPT_MODEL
@@ -600,6 +618,80 @@ def parse_bool_flag(value: Optional[str]) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def ensure_mqtt_available() -> None:
+    """Raise an HTTP error if the optional MQTT dependency is missing."""
+
+    if mqtt_client is None:
+        raise HTTPException(status_code=500, detail="Install paho-mqtt to use sensor polling.")
+
+
+def sanitize_mqtt_config(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of the MQTT config without leaking the password."""
+
+    safe = dict(config)
+    if safe.get("password"):
+        safe["has_password"] = True
+    safe.pop("password", None)
+    return safe
+
+
+def poll_mqtt_topics(config: Dict[str, Any], timeout: float = 5.0) -> List[Dict[str, Any]]:
+    """Connect to the broker and collect the most recent payloads for configured topics."""
+
+    ensure_mqtt_available()
+    broker = (config.get("broker") or "").strip()
+    port = int(config.get("port") or 1883)
+    sensors = config.get("sensors") or []
+    if not broker:
+        raise HTTPException(status_code=400, detail="MQTT broker missing.")
+    if not sensors:
+        raise HTTPException(status_code=400, detail="No sensors configured.")
+
+    readings: Dict[str, Dict[str, Any]] = {}
+    client = mqtt_client.Client()
+    if config.get("username"):
+        client.username_pw_set(config.get("username"), config.get("password") or None)
+    if config.get("use_tls"):
+        client.tls_set()
+
+    def on_message(client_obj, userdata, msg):  # type: ignore[unused-argument]
+        for sensor in sensors:
+            if msg.topic == sensor.get("topic"):
+                try:
+                    value = msg.payload.decode("utf-8")
+                except Exception:
+                    value = str(msg.payload)
+                readings[sensor.get("id") or msg.topic] = {
+                    "id": sensor.get("id"),
+                    "label": sensor.get("label"),
+                    "kind": sensor.get("kind"),
+                    "topic": msg.topic,
+                    "value": value,
+                    "unit": sensor.get("unit"),
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                }
+
+    client.on_message = on_message
+    try:
+        client.connect(broker, port, keepalive=60)
+    except Exception as exc:  # pragma: no cover - network dependent
+        raise HTTPException(status_code=400, detail=f"MQTT connection failed: {exc}") from exc
+    for sensor in sensors:
+        topic = sensor.get("topic")
+        if topic:
+            client.subscribe(topic)
+    client.loop_start()
+    start = time.time()
+    try:
+        while (time.time() - start) < timeout and len(readings) < len(sensors):
+            client.loop(timeout=0.1)
+            time.sleep(0.05)
+    finally:
+        client.loop_stop()
+        client.disconnect()
+    return list(readings.values())
 
 
 def generate_request_id() -> str:
@@ -1906,6 +1998,34 @@ async def activate_llm_profile(profile_id: str) -> JSONResponse:
 async def delete_llm_profile_endpoint(profile_id: str) -> JSONResponse:
     delete_llm_profile(profile_id)
     return JSONResponse(build_llm_settings_payload("Profil entfernt."))
+
+
+@app.get("/api/mqtt/config", response_class=JSONResponse)
+async def fetch_mqtt_config() -> JSONResponse:
+    """Expose the MQTT broker + sensor settings (password is never returned)."""
+
+    config = get_mqtt_config()
+    return JSONResponse({"config": sanitize_mqtt_config(config), "kinds": sorted(MQTT_SENSOR_KINDS)})
+
+
+@app.post("/api/mqtt/config", response_class=JSONResponse)
+async def save_mqtt_config(payload: MQTTConfigPayload) -> JSONResponse:
+    """Persist MQTT broker settings and sensor topics."""
+
+    current = get_mqtt_config()
+    body = payload.dict()
+    if not body.get("password") and current.get("password"):
+        body["password"] = current.get("password")
+    saved = persist_mqtt_config(body)
+    return JSONResponse({"config": sanitize_mqtt_config(saved), "message": "MQTT settings saved."})
+
+
+@app.post("/api/mqtt/poll", response_class=JSONResponse)
+async def poll_mqtt_values() -> JSONResponse:
+    """Connect to the configured broker, subscribe to sensor topics, and return the most recent payloads."""
+
+    readings = poll_mqtt_topics(get_mqtt_config())
+    return JSONResponse({"values": readings, "count": len(readings)})
 
 
 @app.get("/network/status", response_class=JSONResponse)

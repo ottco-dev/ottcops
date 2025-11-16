@@ -8,7 +8,13 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
 
-from .config import DEFAULT_LLM_CONFIG, LLM_ALLOWED_PROVIDERS, SETTINGS_PATH
+from .config import (
+    DEFAULT_LLM_CONFIG,
+    LLM_ALLOWED_PROVIDERS,
+    MQTT_DEFAULT_CONFIG,
+    MQTT_SENSOR_KINDS,
+    SETTINGS_PATH,
+)
 
 logger = logging.getLogger("ottcouture.app")
 
@@ -65,12 +71,63 @@ def normalize_llm_profiles(raw: Optional[List[Dict[str, Any]]]) -> List[Dict[str
     return profiles
 
 
+def _normalize_sensor_id(value: str) -> str:
+    cleaned = "".join(ch if ch.isalnum() else "-" for ch in (value or "").lower())
+    return cleaned.strip("-") or f"sensor-{uuid.uuid4().hex[:6]}"
+
+
+def normalize_mqtt_sensor(entry: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not isinstance(entry, dict):
+        return None
+    label = (entry.get("label") or entry.get("name") or "MQTT Sensor").strip()
+    topic = (entry.get("topic") or "").strip()
+    if not topic:
+        return None
+    kind_raw = str(entry.get("kind") or entry.get("type") or "custom").lower()
+    kind = kind_raw if kind_raw in MQTT_SENSOR_KINDS else "custom"
+    sensor_id = entry.get("id") or _normalize_sensor_id(label or topic)
+    return {
+        "id": sensor_id,
+        "label": label or sensor_id,
+        "topic": topic,
+        "kind": kind,
+        "unit": (entry.get("unit") or "").strip(),
+    }
+
+
+def normalize_mqtt_config(payload: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    config = dict(MQTT_DEFAULT_CONFIG)
+    if isinstance(payload, dict):
+        broker = (payload.get("broker") or "").strip()
+        if broker:
+            config["broker"] = broker
+        try:
+            port = int(payload.get("port") or config["port"])
+            config["port"] = port
+        except (TypeError, ValueError):
+            pass
+        for key in ("username", "password"):
+            if payload.get(key) is not None:
+                config[key] = str(payload.get(key))
+        if payload.get("use_tls") is not None:
+            config["use_tls"] = bool(payload.get("use_tls"))
+        sensors: List[Dict[str, Any]] = []
+        if isinstance(payload.get("sensors"), list):
+            for entry in payload["sensors"]:
+                normalized = normalize_mqtt_sensor(entry)
+                if normalized:
+                    sensors.append(normalized)
+        config["sensors"] = sensors
+    return config
+
+
 def load_app_settings() -> Dict[str, Any]:
     defaults = {
         "default_model_id": None,
         "llm_config": DEFAULT_LLM_CONFIG.copy(),
         "llm_profiles": [],
         "active_llm_profile": None,
+        "mqtt": MQTT_DEFAULT_CONFIG.copy(),
     }
     if SETTINGS_PATH.is_file():
         try:
@@ -79,6 +136,7 @@ def load_app_settings() -> Dict[str, Any]:
             defaults["llm_config"] = normalize_llm_config(data.get("llm_config"))
             defaults["llm_profiles"] = normalize_llm_profiles(data.get("llm_profiles"))
             defaults["active_llm_profile"] = data.get("active_llm_profile")
+            defaults["mqtt"] = normalize_mqtt_config(data.get("mqtt"))
             if defaults["active_llm_profile"] and not any(
                 p.get("id") == defaults["active_llm_profile"] for p in defaults["llm_profiles"]
             ):
@@ -198,3 +256,16 @@ def set_default_model_id(model_id: Optional[str]) -> Optional[str]:
     _app_settings["default_model_id"] = model_id
     save_app_settings(_app_settings)
     return model_id
+
+
+def get_mqtt_config() -> Dict[str, Any]:
+    config = normalize_mqtt_config(_app_settings.get("mqtt"))
+    _app_settings["mqtt"] = config
+    return config
+
+
+def persist_mqtt_config(payload: Dict[str, Any]) -> Dict[str, Any]:
+    normalized = normalize_mqtt_config(payload)
+    _app_settings["mqtt"] = normalized
+    save_app_settings(_app_settings)
+    return normalized
