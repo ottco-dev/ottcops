@@ -2094,13 +2094,14 @@ async def analyze(
 
     request_id = generate_request_id()
     debug_flag = parse_bool_flag(debug)
+    resolved_llm_profile = llm_profile_id or get_active_llm_profile_id()
     try:
         image_bytes = await image.read()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Failed to read uploaded image: {exc}") from exc
 
     model_entry = resolve_model_entry(model_id)
-    llm_config = get_llm_config(llm_profile_id)
+    llm_config = get_llm_config(resolved_llm_profile)
     if normalized_mode == "ml":
         classification, timings = perform_ml_only(image_bytes, model_entry)
         analysis_payload = build_ml_payload(classification, model_entry, timings)
