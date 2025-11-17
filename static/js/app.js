@@ -376,6 +376,11 @@ function renderCustomTemplateList() {
 function initPromptBuilder() {
   renderFaqBlocks();
   renderPrebuiltQuestions();
+  // In case network errors cleared the grid, re-assert defaults once the DOM has settled.
+  setTimeout(() => {
+    ensureFaqBlocksVisible();
+    ensurePrebuiltQuestionsVisible();
+  }, 50);
   if (dom.builderModeButtons) {
     dom.builderModeButtons.forEach((btn) => {
       btn.addEventListener("click", () => switchBuilderMode(btn.dataset.builderMode));
@@ -409,6 +414,12 @@ function renderFaqBlocks() {
     tile.addEventListener("click", () => insertPromptText(block.prompt));
     dom.faqBlockList.appendChild(tile);
   });
+  if (!state.faqBlocks.length) {
+    const empty = document.createElement("div");
+    empty.className = "disclaimer";
+    empty.textContent = "No FAQ blocks available. Reload or add blocks in the config page.";
+    dom.faqBlockList.appendChild(empty);
+  }
 }
 
 function renderPrebuiltQuestions() {
@@ -428,6 +439,29 @@ function renderPrebuiltQuestions() {
     });
     dom.prebuiltQuestionList.appendChild(pill);
   });
+  if (!PREBUILT_QUESTIONS.length) {
+    const empty = document.createElement("span");
+    empty.className = "disclaimer";
+    empty.textContent = "No quick questions configured.";
+    dom.prebuiltQuestionList.appendChild(empty);
+  }
+}
+
+function ensureFaqBlocksVisible() {
+  if (!dom.faqBlockList) return;
+  if (dom.faqBlockList.children.length === 0) {
+    if (!state.faqBlocks.length) {
+      state.faqBlocks = [...DEFAULT_FAQ_BLOCKS];
+    }
+    renderFaqBlocks();
+  }
+}
+
+function ensurePrebuiltQuestionsVisible() {
+  if (!dom.prebuiltQuestionList) return;
+  if (dom.prebuiltQuestionList.children.length === 0) {
+    renderPrebuiltQuestions();
+  }
 }
 
 function switchBuilderMode(mode) {
