@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE Analyzer · Streams</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: radial-gradient(circle at 15% 15%, rgba(64, 255, 163, 0.1), transparent 40%),
+          radial-gradient(circle at 80% 0%, rgba(111, 125, 255, 0.12), transparent 45%), #05060f;
+        --panel: rgba(6, 8, 18, 0.9);
+        --card: rgba(10, 12, 32, 0.95);
+        --text: #f8fbff;
+        --muted: rgba(255, 255, 255, 0.72);
+        --border: rgba(255, 255, 255, 0.1);
+        --accent: #40ffa3;
+        --accent-2: #6f7dff;
+        font-family: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+      body.theme-light {
+        --bg: linear-gradient(145deg, #f2f5fb, #ffffff);
+        --panel: #ffffff;
+        --card: #f8fbff;
+        --text: #081126;
+        --muted: rgba(8, 17, 38, 0.65);
+        --border: rgba(8, 17, 38, 0.12);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); padding: 2rem clamp(1rem,3vw,3rem) 3rem; }
+      header.navbar { display:flex; align-items:center; gap:1rem; padding:0.75rem 1.2rem; border-radius:18px; border:1px solid var(--border); background:linear-gradient(120deg, rgba(7,9,20,0.85), rgba(5,7,15,0.85)); }
+      nav { display:flex; gap:0.75rem; flex-wrap:wrap; }
+      nav a { text-decoration:none; padding:0.55rem 0.95rem; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,0.05); font-weight:600; }
+      .navbar-actions { margin-left:auto; display:flex; gap:0.5rem; }
+      .pill-button, button, .navbar-actions button { border-radius:14px; border:1px solid var(--border); background:rgba(255,255,255,0.07); padding:0.7rem 1.1rem; color:inherit; font-weight:600; cursor:pointer; }
+      .pill-button.accent { background:linear-gradient(120deg, var(--accent), var(--accent-2)); color:#05060f; border:none; }
+      header.hero { margin-top:1.5rem; border-radius:30px; padding:clamp(1.5rem,3vw,3rem); border:1px solid var(--border); background:linear-gradient(135deg, rgba(10,12,30,0.92), rgba(5,7,18,0.92)); display:grid; gap:1rem; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); }
+      main { margin-top:2rem; display:grid; gap:1.25rem; }
+      .card { border-radius:26px; border:1px solid var(--border); background:var(--card); padding:clamp(1.1rem,2vw,1.75rem); box-shadow:0 24px 64px rgba(0,0,0,0.35); }
+      .grid { display:grid; gap:1.25rem; }
+      .two-col { grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); }
+      label { font-weight:600; color:var(--muted); display:flex; flex-direction:column; gap:0.45rem; }
+      textarea, select, input[type="text"], input[type="url"], input[type="number"] { background:rgba(5,7,18,0.65); border:1px solid var(--border); border-radius:14px; padding:0.85rem 1rem; color:var(--text); font-family:inherit; }
+      .disclaimer { color: var(--muted); }
+      .stream-card { border:1px solid var(--border); border-radius:14px; padding:0.8rem; margin-top:0.6rem; background:rgba(255,255,255,0.03); }
+    </style>
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="brand">OPENCORE Analyzer</div>
+      <nav>
+        <a href="/static/index.html">Image Lab</a>
+        <a href="/static/video.html">Video Lab</a>
+        <a href="/static/uploads.html">Upload Library</a>
+        <a href="/static/streams.html">Streams</a>
+        <a href="/static/config.html">Config</a>
+        <a href="/static/completions.html">Chat</a>
+        <a href="/doc/index.html">Docs</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+      </nav>
+      <div class="navbar-actions">
+        <button id="apiSettingsBtn">API</button>
+        <button id="themeToggle">Theme</button>
+      </div>
+    </header>
+
+    <header class="hero">
+      <div>
+        <h1>Stream Orchestration</h1>
+        <p class="disclaimer">Create, monitor, and preview USB/webcam/RTSP streams with overlays and timed ML/LLM runs.</p>
+      </div>
+      <div class="pill-row" style="align-self:flex-end; display:flex; gap:0.5rem; flex-wrap:wrap;">
+        <span class="pill-button">Private use only</span>
+        <span class="pill-button">Enterprise licenses via ottcouture.eu</span>
+      </div>
+    </header>
+
+    <main class="grid two-col">
+      <div class="card">
+        <h2>New stream</h2>
+        <form id="streamForm" class="stacked" style="display:flex; flex-direction:column; gap:0.75rem;">
+          <label>Stream name <input id="streamName" type="text" placeholder="Grow tent stream" /></label>
+          <label>Source URL <input id="streamUrl" type="url" placeholder="rtsp:// or http://" /></label>
+          <label>
+            Source type
+            <select id="streamSourceType">
+              <option value="rtsp">RTSP / HTTP</option>
+              <option value="usb">USB webcam</option>
+            </select>
+          </label>
+          <label>
+            Teachable Machine model
+            <select id="streamModel"></select>
+          </label>
+          <label>
+            Analysis mode
+            <select id="streamAnalysisMode">
+              <option value="hybrid">Hybrid</option>
+              <option value="ml">ML only</option>
+              <option value="llm">LLM only</option>
+            </select>
+          </label>
+          <label>
+            LLM profile
+            <select id="streamLlmProfile"></select>
+          </label>
+          <label>Prompt <textarea id="streamPrompt" placeholder="Context for the LLM"></textarea></label>
+          <label>Capture interval (seconds) <input id="streamCaptureInterval" type="number" value="5" /></label>
+          <label>Batch interval (seconds) <input id="streamBatchInterval" type="number" value="30" /></label>
+          <button class="pill-button accent" type="submit">Save stream</button>
+          <div id="streamStatus" class="disclaimer"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2>Active streams</h2>
+        <div class="pill-row" style="justify-content:space-between;">
+          <button id="streamRefresh" class="pill-button">Refresh</button>
+        </div>
+        <div id="streamList"></div>
+      </div>
+    </main>
+
+    <div class="modal" id="apiModal">
+      <div class="modal-content">
+        <h3>API Token Mode</h3>
+        <label>API Base URL <input type="url" id="apiBaseUrl" placeholder="https://" /></label>
+        <label>API Token <input type="password" id="apiToken" placeholder="Bearer token" /></label>
+        <label style="flex-direction:row; align-items:center; gap:0.5rem;">
+          <input type="checkbox" id="apiModeEnabled" /> Enable token mode
+        </label>
+        <div class="pill-row" style="justify-content:flex-end;">
+          <button type="button" id="resetApiSettings" class="pill-button">Reset</button>
+          <button type="button" id="saveApiSettings" class="pill-button accent">Save</button>
+          <button type="button" id="closeApiModal" class="pill-button">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>

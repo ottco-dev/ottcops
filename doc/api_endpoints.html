@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>API Endpoints · OPENCORE Analyzer</title>
+    <style>
+      :root {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        color: #071019;
+        background: #f7f8fb;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 1100px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f7f8fb;
+      }
+      header {
+        border-bottom: 3px solid #111527;
+        margin-bottom: 2rem;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #111527;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 1.25rem;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #e3e8f0;
+        border-radius: 14px;
+        padding: 1rem;
+        box-shadow: 0 10px 30px rgba(7, 16, 25, 0.05);
+      }
+      .endpoint-list {
+        max-height: 70vh;
+        overflow: auto;
+      }
+      .endpoint-item {
+        border: 1px solid #e3e8f0;
+        border-radius: 12px;
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+        cursor: pointer;
+        transition: border 0.2s ease, box-shadow 0.2s ease;
+      }
+      .endpoint-item:hover,
+      .endpoint-item.active {
+        border-color: #40ffa3;
+        box-shadow: 0 10px 24px rgba(64, 255, 163, 0.12);
+      }
+      .tag {
+        display: inline-block;
+        padding: 0.15rem 0.55rem;
+        border-radius: 999px;
+        background: #0f172a;
+        color: #f7f8fb;
+        font-size: 0.8rem;
+        font-weight: 700;
+      }
+      .method-get { background: #e0f5ff; color: #0a5b8a; }
+      .method-post { background: #e6ffee; color: #0d5c2b; }
+      .method-put { background: #fff6e6; color: #7a4b00; }
+      .method-delete { background: #ffe6e6; color: #7a0d1b; }
+      label { display: block; font-weight: 600; margin-top: 0.75rem; }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 0.6rem 0.7rem;
+        margin-top: 0.3rem;
+        border: 1px solid #d3d8e0;
+        border-radius: 10px;
+        font-family: inherit;
+      }
+      textarea { min-height: 140px; }
+      button {
+        margin-top: 0.9rem;
+        padding: 0.75rem 1.1rem;
+        border-radius: 12px;
+        border: 1px solid #0f172a;
+        background: linear-gradient(120deg, #40ffa3, #6f7dff);
+        color: #05060f;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      pre {
+        background: #0f172a;
+        color: #f7f8fb;
+        padding: 1rem;
+        border-radius: 12px;
+        overflow: auto;
+      }
+      .muted { color: #5b6477; }
+      .inline { display: inline; }
+      .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+      .pill { padding: 0.35rem 0.65rem; border-radius: 10px; background: #e3e8f0; font-size: 0.9rem; }
+      .status-ok { color: #0d5c2b; font-weight: 700; }
+      .status-fail { color: #7a0d1b; font-weight: 700; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>API Endpoints &amp; Explorer</h1>
+      <p>
+        Explore and test every OPENCORE endpoint in one place. This custom explorer replaces the default Swagger UI and keeps the styling aligned with the rest of the documentation.
+      </p>
+      <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>How to use</h2>
+      <ul>
+        <li>Use the search box to filter endpoints by path or summary.</li>
+        <li>Select an endpoint to see its method, parameters, and an editable request body.</li>
+        <li>Click <strong>Send request</strong> to issue a live call; responses appear with status, latency, and formatted JSON/text.</li>
+        <li>Provide a base URL and Authorization header when targeting remote deployments or API token mode.</li>
+      </ul>
+      <p class="muted">
+        Tip: The explorer consumes <code>/openapi.json</code> directly, so it stays in sync even after you add custom modules or disable built-in routes.
+      </p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <label for="filter">Search endpoints</label>
+        <input id="filter" type="text" placeholder="Filter by path or summary" />
+        <div class="endpoint-list" id="endpointList"></div>
+      </div>
+
+      <div class="card" id="detailsPanel">
+        <div class="row">
+          <div>
+            <div class="pill">Base URL</div>
+            <input id="baseUrl" type="text" value="" />
+          </div>
+          <div>
+            <div class="pill">Authorization</div>
+            <input id="authHeader" type="text" placeholder="Bearer &lt;token&gt; (optional)" />
+          </div>
+        </div>
+        <p class="muted">Select an endpoint on the left to view details and send test calls.</p>
+        <div id="endpointMeta"></div>
+        <div id="paramContainer"></div>
+        <label for="queryParams">Query parameters (JSON object)</label>
+        <textarea id="queryParams" placeholder='{"limit": 10}'></textarea>
+        <label for="requestBody">Request body (JSON)</label>
+        <textarea id="requestBody" placeholder="{ }"></textarea>
+        <button id="sendBtn" disabled>Send request</button>
+        <div id="responseMeta" class="muted"></div>
+        <pre id="responseBody"></pre>
+      </div>
+    </section>
+
+    <section>
+      <h2>Reading the explorer</h2>
+      <ul>
+        <li><strong>Tags:</strong> Each tile shows the HTTP method (color-coded) and the path.</li>
+        <li><strong>Parameters:</strong> Path parameters render as individual inputs; query parameters can be provided as JSON.</li>
+        <li><strong>Bodies:</strong> Request bodies default to any examples defined in the OpenAPI spec; feel free to edit before sending.</li>
+        <li><strong>Responses:</strong> Status + duration display above the response payload. JSON is pretty-printed automatically.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Examples</h2>
+      <pre><code># Curl: run a batch analysis
+curl -X POST "http://localhost:8000/api/opencore/analyze-batch" \ 
+  -H "Content-Type: multipart/form-data" \
+  -F "modelId=builtin" \
+  -F "prompt=Analyze trichomes" \
+  -F "files[]=@/path/to/photo1.jpg" -F "files[]=@/path/to/photo2.jpg"
+
+# Python: fetch the LLM settings
+import requests
+print(requests.get("http://localhost:8000/api/settings/llm").json())
+</code></pre>
+    </section>
+
+    <script>
+      // Lightweight API explorer powered by the OpenAPI spec.
+      const endpointList = document.getElementById("endpointList");
+      const filterInput = document.getElementById("filter");
+      const baseUrlInput = document.getElementById("baseUrl");
+      const authInput = document.getElementById("authHeader");
+      const endpointMeta = document.getElementById("endpointMeta");
+      const paramContainer = document.getElementById("paramContainer");
+      const bodyInput = document.getElementById("requestBody");
+      const queryInput = document.getElementById("queryParams");
+      const sendBtn = document.getElementById("sendBtn");
+      const responseMeta = document.getElementById("responseMeta");
+      const responseBody = document.getElementById("responseBody");
+      let operations = [];
+      let active = null;
+
+      // Initialize base URL from current origin for convenience.
+      baseUrlInput.value = `${window.location.protocol}//${window.location.host}`;
+
+      function methodTag(method) {
+        const span = document.createElement("span");
+        span.className = `tag method-${method.toLowerCase()}`;
+        span.textContent = method.toUpperCase();
+        return span;
+      }
+
+      function loadSpec() {
+        fetch("/openapi.json")
+          .then((res) => res.json())
+          .then((spec) => {
+            operations = [];
+            Object.entries(spec.paths || {}).forEach(([path, methods]) => {
+              Object.entries(methods).forEach(([method, config]) => {
+                if (["parameters", "$ref"].includes(method)) return;
+                operations.push({
+                  id: `${method}-${path}`,
+                  method,
+                  path,
+                  summary: config.summary || config.operationId || path,
+                  description: config.description || "",
+                  parameters: config.parameters || [],
+                  requestBody: config.requestBody || null,
+                });
+              });
+            });
+            renderList();
+          })
+          .catch((err) => {
+            endpointList.innerHTML = `<p class="status-fail">Failed to load /openapi.json: ${err}</p>`;
+          });
+      }
+
+      function renderList() {
+        const term = filterInput.value.toLowerCase();
+        endpointList.innerHTML = "";
+        operations
+          .filter((op) =>
+            op.path.toLowerCase().includes(term) || (op.summary || "").toLowerCase().includes(term)
+          )
+          .sort((a, b) => a.path.localeCompare(b.path))
+          .forEach((op) => {
+            const item = document.createElement("div");
+            item.className = `endpoint-item ${active && active.id === op.id ? "active" : ""}`;
+            const tag = methodTag(op.method);
+            const title = document.createElement("div");
+            title.className = "row";
+            title.appendChild(tag);
+            const summary = document.createElement("div");
+            summary.innerHTML = `<strong>${op.path}</strong><br /><span class="muted">${op.summary}</span>`;
+            title.appendChild(summary);
+            item.appendChild(title);
+            item.addEventListener("click", () => selectOperation(op));
+            endpointList.appendChild(item);
+          });
+      }
+
+      function selectOperation(op) {
+        active = op;
+        renderList();
+        endpointMeta.innerHTML = `
+          <h3>${op.summary}</h3>
+          <p class="muted">${op.description || "No description provided."}</p>
+          <p class="row"><span class="pill">${op.method.toUpperCase()}</span><span class="pill">${op.path}</span></p>
+        `;
+        paramContainer.innerHTML = "";
+        (op.parameters || []).forEach((param) => {
+          if (param.in === "path") {
+            const id = `param-${param.name}`;
+            const wrapper = document.createElement("div");
+            wrapper.innerHTML = `<label for="${id}">${param.name} (path)</label><input id="${id}" data-kind="path" data-name="${param.name}" placeholder="${param.description || ""}" />`;
+            paramContainer.appendChild(wrapper);
+          }
+        });
+        if (op.requestBody && op.requestBody.content && op.requestBody.content["application/json"]) {
+          const example = op.requestBody.content["application/json"].example;
+          const schema = op.requestBody.content["application/json"].schema;
+          if (example) {
+            bodyInput.value = JSON.stringify(example, null, 2);
+          } else if (schema && schema.example) {
+            bodyInput.value = JSON.stringify(schema.example, null, 2);
+          } else {
+            bodyInput.value = "{}";
+          }
+        } else {
+          bodyInput.value = "";
+        }
+        queryInput.value = "";
+        responseMeta.textContent = "";
+        responseBody.textContent = "";
+        sendBtn.disabled = false;
+      }
+
+      function buildUrl(op) {
+        let url = (baseUrlInput.value || "").replace(/\/$/, "") + op.path;
+        const pathInputs = paramContainer.querySelectorAll("input[data-kind='path']");
+        pathInputs.forEach((input) => {
+          url = url.replace(`{${input.dataset.name}}`, encodeURIComponent(input.value || ""));
+        });
+        return url;
+      }
+
+      function parseQuery() {
+        if (!queryInput.value.trim()) return "";
+        try {
+          const obj = JSON.parse(queryInput.value);
+          const params = new URLSearchParams();
+          Object.entries(obj).forEach(([k, v]) => {
+            if (v !== undefined && v !== null) params.append(k, v);
+          });
+          const qs = params.toString();
+          return qs ? `?${qs}` : "";
+        } catch (err) {
+          alert("Query params must be valid JSON object");
+          throw err;
+        }
+      }
+
+      function sendRequest() {
+        if (!active) return;
+        let url = buildUrl(active);
+        url += parseQuery();
+        const headers = { "Content-Type": "application/json" };
+        if (authInput.value.trim()) headers["Authorization"] = authInput.value.trim();
+        let body = undefined;
+        if (!['get','delete'].includes(active.method.toLowerCase()) && bodyInput.value.trim()) {
+          try {
+            body = JSON.stringify(JSON.parse(bodyInput.value));
+          } catch (err) {
+            alert("Request body must be valid JSON");
+            return;
+          }
+        }
+        const started = performance.now();
+        fetch(url, { method: active.method.toUpperCase(), headers, body })
+          .then(async (res) => {
+            const elapsed = Math.round(performance.now() - started);
+            responseMeta.innerHTML = `<span class="${res.ok ? "status-ok" : "status-fail"}">Status ${res.status}</span> · ${elapsed}ms`;
+            const text = await res.text();
+            try {
+              const parsed = JSON.parse(text);
+              responseBody.textContent = JSON.stringify(parsed, null, 2);
+            } catch (err) {
+              responseBody.textContent = text;
+            }
+          })
+          .catch((err) => {
+            responseMeta.innerHTML = `<span class="status-fail">Request failed</span>`;
+            responseBody.textContent = String(err);
+          });
+      }
+
+      filterInput.addEventListener("input", renderList);
+      sendBtn.addEventListener("click", sendRequest);
+      loadSpec();
+    </script>
+  </body>
+</html>
