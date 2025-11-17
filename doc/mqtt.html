@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MQTT Sensors · OPENCORE Analyzer</title>
+    <style>
+      body {
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        line-height: 1.6;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      a {
+        color: #0d5c63;
+      }
+      code {
+        background: #111527;
+        color: #f7f8fb;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+      }
+      pre {
+        background: #0b1020;
+        color: #f8fbff;
+        padding: 1rem;
+        border-radius: 12px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>MQTT sensors & prompt blocks</h1>
+      <p>
+        Connect greenhouse sensors to the analyzer so prompts can reference live humidity, temperature, CO₂, PPFD/LUX, EC, and pH values.
+        Configure the broker in the config hub, then drag sensor chips into prompts on the main analyzer page.
+      </p>
+      <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Setup</h2>
+      <ol>
+        <li>Open <code>/config</code> and scroll to <strong>MQTT sensors</strong>.</li>
+        <li>Enter broker host/port plus optional username/password and TLS toggle.</li>
+        <li>Add sensors with label, topic, kind (CO2, PPFD/LUX, humidity, temperature, EC, pH), and unit.</li>
+        <li>Click <em>Save MQTT config</em> to persist server-side.</li>
+        <li>Use <em>Test &amp; fetch values</em> to verify the broker and preview readings.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Using sensors in prompts</h2>
+      <ul>
+        <li>On <code>/</code> click <em>Refresh sensor values</em> to pull the latest readings.</li>
+        <li>Drag a sensor chip onto the prompt textarea or click it to insert a text snippet such as <code>Humidity: 58%</code>.</li>
+        <li>The inserted text becomes part of the prompt sent to the LLM, grounding plant-health or growth instructions in real metrics.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>API endpoints</h2>
+      <ul>
+        <li><code>GET /api/mqtt/config</code> – returns stored broker + sensors (password omitted).</li>
+        <li><code>POST /api/mqtt/config</code> – saves broker + sensors payload.</li>
+        <li><code>POST /api/mqtt/poll</code> – connects to the broker, subscribes to all sensor topics, and returns the newest payloads.</li>
+      </ul>
+      <pre><code>curl -X POST http://localhost:8000/api/mqtt/poll</code></pre>
+    </section>
+
+    <section>
+      <h2>Tips</h2>
+      <ul>
+        <li>Use retained MQTT messages or frequent publishes so the poll endpoint returns fresh readings.</li>
+        <li>Keep topic names short and descriptive; they become prompt snippets.</li>
+        <li>Units are optional but help LLM clarity (e.g., % for humidity, ppm for CO₂, µmol/m²/s for PPFD).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Backend:</strong> <code>load_mqtt_config()</code> and <code>save_mqtt_config()</code> in <code>app.py</code> persist broker and sensor entries. <code>poll_mqtt_sensors()</code> performs a one-shot fetch; wrap it in your own scheduler if you want continuous polling.</li>
+        <li><strong>Frontend:</strong> <code>refreshMqttSensors()</code> in <code>static/js/app.js</code> pulls readings and renders draggable chips. The function is optional—skip calling it if you only need static prompts.</li>
+        <li><strong>Prompt insertion:</strong> <code>insertPromptText()</code> handles chip drops. Reuse it to add other data sources (e.g., weather, lab results) as modular prompt fragments.</li>
+      </ul>
+      <pre><code>// Fetch sensors without touching the UI
+const data = await performApiRequest('/api/mqtt/poll', { method: 'POST' });
+const humidity = data.values.find(v => v.kind === 'humidity');
+if (humidity) insertPromptText(`Humidity: ${humidity.value}${humidity.unit || ''}`);
+</code></pre>
+      <p>Tip: keep topics scoped (e.g., <code>growtent/sensors/humidity</code>) so the UI labels stay short when inserted into prompts.</p>
+    </section>
+  </body>
+</html>

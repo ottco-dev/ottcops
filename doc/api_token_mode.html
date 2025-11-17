@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>API Token Mode · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>API Token Mode</h1>
+      <p>Route analyzer calls to your own API base and bearer token.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Setup</h2>
+      <ol>
+        <li>Open the settings gear in the UI.</li>
+        <li>Enter <strong>API Base URL</strong> and <strong>API Token</strong>.</li>
+        <li>Enable <strong>API Token Mode</strong> and save the profile.</li>
+        <li>Select the profile when running analyses or chat.</li>
+      </ol>
+      <p>Settings are stored in <code>localStorage</code> and in <code>/api/settings/llm</code> so they survive restarts.</p>
+    </section>
+
+    <section>
+      <h2>Code samples</h2>
+      <pre><code>curl -X POST "$BASE/api/opencore/analyze" \ 
+  -H "Authorization: Bearer $TOKEN" \ 
+  -F "prompt=Describe trichome maturity" \ 
+  -F "files[]=@sample.jpg"</code></pre>
+      <pre><code># Python
+import requests
+files = {"files[]": open("sample.jpg", "rb")}
+data = {"prompt": "Describe trichome maturity"}
+resp = requests.post(f"{base}/api/opencore/analyze", headers={"Authorization": f"Bearer {token}"}, files=files, data=data)
+print(resp.json())</code></pre>
+      <pre><code>// Node (fetch)
+const fd = new FormData();
+fd.append("prompt", "Describe trichome maturity");
+fd.append("files[]", fs.createReadStream("sample.jpg"));
+const r = await fetch(`${base}/api/opencore/analyze`, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${token}` },
+  body: fd,
+});
+console.log(await r.json());</code></pre>
+    </section>
+
+    <section>
+      <h2>Security</h2>
+      <ul>
+        <li>Tokens are only stored locally and sent with your requests.</li>
+        <li>Backend does not log tokens; remove them from saved profiles if you rotate credentials.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Backend:</strong> <code>opencore/settings_store.py</code> exposes <code>load_llm_profiles()</code> and <code>save_llm_profile(profile)</code>. Profiles store base URL, token, model, and system prompt. You can call these helpers from your own FastAPI routers to keep configuration centralized.</li>
+        <li><strong>Frontend:</strong> <code>openApiTokenModal()</code> and <code>saveApiTokenSettings()</code> in <code>static/js/app.js</code> read/write the modal fields and persist them via <code>/api/settings/llm</code>. They are optional—if you skip rendering the modal, the analyzer falls back to local defaults.</li>
+        <li><strong>Request wrapper:</strong> <code>performApiRequest(path, options)</code> automatically injects <code>Authorization</code> when a profile is active. Reuse this helper for new fetch calls to keep token handling consistent.</li>
+      </ul>
+      <pre><code>// Example: save a custom profile then test it
+await saveApiTokenSettings({
+  name: "lab-openai",
+  baseUrl: "https://api.openai.com/v1",
+  apiToken: "sk-...",
+  model: "gpt-4o-mini",
+  systemPrompt: "Keep answers concise."
+});
+const probe = await testLlmProfile("lab-openai");
+console.log(probe.status, probe.latency_ms);
+</code></pre>
+      <p>Tip: keep profiles small and declarative. If you need environment-specific tokens, inject them server-side in <code>settings_store</code> so the UI never exposes them.</p>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Home Automation · OPENCORE Analyzer</title>
+    <style>
+      body { font-family: "Space Grotesk", system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 2.5rem; line-height: 1.6; }
+      header { border-bottom: 2px solid #0f172a; margin-bottom: 2rem; }
+      pre { background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      .doc-nav a { margin-right: 1rem; color: #0d5c63; text-decoration: none; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Home Automation</h1>
+      <p>Wire the analyzer into Home Assistant, Node-RED, or simple scripts.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Concept</h2>
+      <p>A camera captures an image, sends it to the analyzer, and automation reacts to keywords or fields in the JSON response.</p>
+    </section>
+
+    <section>
+      <h2>REST calls</h2>
+      <pre><code>curl -X POST http://localhost:8000/api/opencore/analyze \ 
+  -F "prompt=Describe mold risk" \ 
+  -F "files[]=@snapshot.jpg"</code></pre>
+      <pre><code>curl -X POST http://localhost:8000/api/opencore/analyze-batch \ 
+  -F "prompt=Summarize health" \ 
+  -F "files[]=@snap1.jpg" -F "files[]=@snap2.jpg"</code></pre>
+    </section>
+
+    <section>
+      <h2>Python script</h2>
+      <pre><code>import time, requests
+while True:
+    files = {"files[]": open("snapshot.jpg", "rb")}
+    resp = requests.post("http://localhost:8000/api/opencore/analyze", files=files, data={"prompt": "Check pests"})
+    data = resp.json()
+    if "pest" in str(data).lower():
+        print("Alert: potential pest detected")
+    time.sleep(60)
+</code></pre>
+    </section>
+
+    <section>
+      <h2>Node-RED flow (textual)</h2>
+      <ol>
+        <li>HTTP Request node → POST to <code>/api/opencore/analyze</code>.</li>
+        <li>Function node → parse JSON and look for <code>mold</code>/<code>pest</code>.</li>
+        <li>Notify/Telegram/Email node → send alert.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Home Assistant</h2>
+      <pre><code># configuration.yaml
+rest:
+  - resource: http://localhost:8000/api/opencore/analyze
+    method: POST
+    payload: "prompt=Describe health"
+    scan_interval: 120
+    sensor:
+      - name: opencore_result
+        value_template: "{{ value_json.summary.text if value_json.summary is defined else '' }}"
+</code></pre>
+      <pre><code># automation.yaml
+- alias: Alert on mold
+  trigger:
+    - platform: state
+      entity_id: sensor.opencore_result
+  condition: "'mold' in trigger.to_state.state | lower"
+  action:
+    - service: notify.mobile_app_phone
+      data:
+        message: "OPENCORE flagged possible mold in the latest snapshot."
+</code></pre>
+      <p>No numeric scores are used—automations rely on text/JSON fields.</p>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Endpoints to call:</strong> <code>/api/opencore/analyze</code> (single), <code>/api/opencore/analyze-batch</code> (multi), and <code>/api/opencore/streams</code> (automation jobs) all live in <code>app.py</code> and return JSON with optional <code>debug</code> blocks.</li>
+        <li><strong>Python helper:</strong> In <code>doc/python_api.html</code> you can copy the <code>requests</code> sample to script uploads from Home Assistant or cron jobs. It is only a client snippet—no extra dependencies are required server-side.</li>
+        <li><strong>MQTT + prompts:</strong> Use <code>refreshMqttSensors()</code> in <code>static/js/app.js</code> or call <code>/api/mqtt/poll</code> directly from your automation to fetch current readings and embed them into prompts.</li>
+      </ul>
+      <pre><code># Minimal Python cron for a sensor camera
+files = {'file': open('latest.jpg', 'rb')}
+resp = requests.post('http://localhost:8000/api/opencore/analyze', files=files, data={'prompt': 'Check mold risk'}).json()
+if 'mold' in resp.get('analysis', {}).get('text', '').lower():
+    notify_team()
+</code></pre>
+      <p>Tip: keep automation small and stateless—fetch sensor values right before calling the analyzer so LLM prompts always contain fresh numbers.</p>
+    </section>
+  </body>
+</html>

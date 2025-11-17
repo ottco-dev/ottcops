@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Video &amp; Streams · OPENCORE Analyzer</title>
+    <style>
+      body { font-family: "Space Grotesk", system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 2.5rem; line-height: 1.6; }
+      header { border-bottom: 2px solid #0f172a; margin-bottom: 2rem; }
+      pre { background: #0f172a; color: #f9fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      .doc-nav a { margin-right: 1rem; color: #0d5c63; text-decoration: none; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Video &amp; Streams</h1>
+      <p>Schedule snapshots, pull RTSP feeds, and batch results automatically.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Creating a stream job</h2>
+      <ol>
+        <li>Open the Streams tab in the UI.</li>
+        <li>Provide a name, source, interval, and ML/LLM settings.</li>
+        <li>Click <em>Create</em>; the job appears in the stream list.</li>
+      </ol>
+      <p><strong>Source types</strong></p>
+      <ul>
+        <li><code>snapshot</code>: HTTP JPEG endpoints (e.g., <code>http://cam/snapshot.jpg</code>).</li>
+        <li><code>video</code>: RTSP/file URLs handled via OpenCV.</li>
+        <li><code>usb</code>: Local USB webcams; provide an index like <code>0</code> or a path such as <code>/dev/video0</code>.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>API endpoints</h2>
+      <ul>
+        <li><code>GET /api/opencore/streams</code> — list jobs and their status.</li>
+        <li><code>POST /api/opencore/streams</code> — create a job.</li>
+        <li><code>POST /api/opencore/streams/{id}/trigger</code> — run once immediately.</li>
+        <li><code>DELETE /api/opencore/streams/{id}</code> — stop and remove.</li>
+        <li><code>GET /api/opencore/streams/{id}/overlay</code> — latest annotated frame (JPEG) for UI overlays.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Overlay preview</h2>
+      <p>
+        Each batch run generates an annotated JPEG with the top label, confidence, and (for hybrid mode) a short LLM summary. The
+        UI pulls this from <code>/api/opencore/streams/{id}/overlay</code> to paint a live preview beside the stream summary.
+      </p>
+    </section>
+
+    <section>
+      <h2>Cadence</h2>
+      <p>
+        Snapshots can be taken every few seconds, but full ML+LLM batches are typically scheduled every ~30 seconds to avoid overload. Adjust intervals to match hardware limits.
+      </p>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Stream manager:</strong> <code>StreamManager</code> in <code>app.py</code> owns creation, snapshots, overlays, and scheduling. It consumes <code>analysis_mode</code> and <code>llm_profile</code> the same way the main analyzer does.</li>
+        <li><strong>Endpoints:</strong> <code>/api/opencore/streams</code> (list/create), <code>/api/opencore/streams/{id}/run</code> (manual trigger), <code>/api/opencore/streams/{id}/overlay.jpg</code> (preview). You can mount these under another router if you want a dedicated stream service.</li>
+        <li><strong>Front-end widgets:</strong> <code>renderStreamCards()</code> and <code>createStream()</code> in <code>static/js/app.js</code> populate the dashboard. Remove them if you only consume streams through the API.</li>
+      </ul>
+      <pre><code>// Trigger a stream from a custom UI
+await performApiRequest(`/api/opencore/streams/${streamId}/run`, { method: 'POST' });
+const overlayUrl = `/api/opencore/streams/${streamId}/overlay.jpg?cache=${Date.now()}`;
+document.querySelector('#overlayPreview').src = overlayUrl;
+</code></pre>
+      <p>Tip: lower <code>interval_seconds</code> on slow hardware and disable overlays by omitting the overlay fetch if you only need JSON.</p>
+    </section>
+  </body>
+</html>

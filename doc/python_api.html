@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE Analyzer · Python API integration</title>
+    <style>
+      :root {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        color: #071019;
+        background: #f7f8fb;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f7f8fb;
+      }
+      header {
+        border-bottom: 3px solid #111527;
+        margin-bottom: 2rem;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      pre {
+        background: #0b1221;
+        color: #f7f8fb;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Python API integration</h1>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Why a dedicated Python page?</h2>
+      <p>
+        Teams frequently automate uploads, schedule batch or video analyses, and wire results into downstream pipelines. The
+        examples below use plain <code>requests</code> so they work everywhere—from laptops to Raspberry Pi nodes.
+      </p>
+    </section>
+
+    <section>
+      <h2>Single-image analysis</h2>
+      <pre><code>import requests
+
+files = {"image": open("bud.jpg", "rb")}
+data = {
+  "prompt": "Check trichome maturity",
+  "analysis_mode": "hybrid",  # ml | llm | hybrid
+  "model_id": "",             # leave empty for default
+  "llm_profile_id": ""        # optional saved profile
+}
+resp = requests.post("http://localhost:8000/analyze", files=files, data=data, timeout=120)
+resp.raise_for_status()
+print(resp.json())</code></pre>
+    </section>
+
+    <section>
+      <h2>Video analysis (MP4 upload or library id)</h2>
+      <pre><code>import requests
+
+files = {"file": open("clip.mp4", "rb")}
+data = {
+  "prompt": "Summarize canopy health",
+  "analysis_mode": "hybrid",
+  "model_id": "",
+}
+resp = requests.post("http://localhost:8000/api/opencore/analyze-video", files=files, data=data, timeout=180)
+resp.raise_for_status()
+print(resp.json()["overlay_video"])  # relative path to the overlay mp4</code></pre>
+    </section>
+
+    <section>
+      <h2>Batch uploads from Python</h2>
+      <pre><code>import requests
+
+files = [("files[]", ("bud1.jpg", open("bud1.jpg", "rb"), "image/jpeg")),
+         ("files[]", ("bud2.jpg", open("bud2.jpg", "rb"), "image/jpeg"))]
+data = {"prompt": "Pest check", "analysis_mode": "ml"}
+resp = requests.post("http://localhost:8000/api/opencore/analyze-batch", files=files, data=data, timeout=180)
+resp.raise_for_status()
+print(resp.json()["summary"])</code></pre>
+    </section>
+
+    <section>
+      <h2>Best practices</h2>
+      <ul>
+        <li>Use <strong>analysis_mode</strong> explicitly: <code>ml</code>, <code>llm</code>, or <code>hybrid</code>.</li>
+        <li>Keep prompts concise; the server enforces the shared LLM profile configuration.</li>
+        <li>Cache upload IDs instead of re-sending large videos; call <code>/api/uploads</code> to retrieve them.</li>
+        <li>Respect licensing: private users and developers may test freely; commercial deployments require a license from ottcouture.eu.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Client helpers:</strong> The Python examples use plain <code>requests</code>. Keep them modular by wrapping uploads in a helper like <code>def analyze(path, prompt): ...</code> so you can call it from cron or automation flows.</li>
+        <li><strong>Server endpoints:</strong> Reference <code>/api/opencore/analyze</code>, <code>/api/opencore/analyze-batch</code>, or <code>/api/opencore/analyze-ml</code> depending on whether you want hybrid, batch, or ML-only behavior. All live in <code>app.py</code>.</li>
+        <li><strong>Token mode:</strong> Add <code>Authorization: Bearer ...</code> headers if you enable the API token mode in the config hub; the backend does not store tokens.</li>
+      </ul>
+      <pre><code>def analyze(file_path, prompt):
+    files = {'file': open(file_path, 'rb')}
+    data = {'prompt': prompt, 'analysis_mode': 'hybrid'}
+    res = requests.post('http://localhost:8000/api/opencore/analyze', files=files, data=data, timeout=60)
+    res.raise_for_status()
+    return res.json()
+</code></pre>
+      <p>Tip: share a single <code>requests.Session</code> for repeated calls to reuse connections when you batch many images.</p>
+    </section>
+  </body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE Analyzer · Media Library & Video Analysis</title>
+    <style>
+      :root {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        color: #071019;
+        background: #f7f8fb;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f7f8fb;
+      }
+      header {
+        border-bottom: 3px solid #111527;
+        margin-bottom: 2rem;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      pre {
+        background: #0b1221;
+        color: #f7f8fb;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Media Library & Video Analysis</h1>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>What the media library does</h2>
+      <ul>
+        <li>Store uploads for reuse: images, MP4 clips, or captured stream frames.</li>
+        <li>Rename or delete assets directly from the UI.</li>
+        <li>Trigger ML, LLM-only, or Hybrid analyses against stored media without re-uploading.</li>
+        <li>View generated overlays for video runs via the built-in preview player.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Video analysis workflow</h2>
+      <ol>
+        <li>Open the <strong>Video Analyzer</strong> card in the main UI.</li>
+        <li>Upload an MP4 (or pick an existing upload from the dropdown).</li>
+        <li>Choose the analysis mode: <em>ML only</em>, <em>LLM only</em>, or <em>Hybrid</em>.</li>
+        <li>Select a model and (optionally) an LLM profile, then provide a prompt for Hybrid/LLM modes.</li>
+        <li>Run the analysis. Frames are sampled, annotated, summarized, and the overlay MP4 is exposed beneath the form.</li>
+      </ol>
+      <p>Overlays mirror the webcam stream behavior: ML confidences and short GPT snippets are burned into the preview.</p>
+    </section>
+
+    <section>
+      <h2>Managing uploads</h2>
+      <ul>
+        <li><strong>Upload media</strong>: drop multiple files; types are auto-detected.</li>
+        <li><strong>Sort</strong>: newest, by name, or by type.</li>
+        <li><strong>Rename</strong>: updates both the registry entry and on-disk filename.</li>
+        <li><strong>Delete</strong>: removes the file and any generated overlay.</li>
+        <li><strong>Analyze</strong>: runs the appropriate endpoint (image → /analyze, video → /api/opencore/analyze-video).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>API endpoints</h2>
+      <pre><code>GET    /api/uploads?sort=recent   # list all uploads
+POST   /api/uploads               # body: file (image/video), optional kind/label
+POST   /api/uploads/{id}/rename   # body: new_name
+DELETE /api/uploads/{id}          # remove upload + overlay
+POST   /api/opencore/analyze-video # analyze MP4 or existing upload_id</code></pre>
+      <p>All endpoints honor API token mode and the shared LLM profile configuration documented elsewhere in this portal.</p>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Upload registry:</strong> Functions like <code>list_uploads()</code>, <code>save_upload()</code>, and <code>delete_upload()</code> in <code>app.py</code> manage media metadata and file paths. They are optional; if you skip them, the analyzer still handles one-off uploads.</li>
+        <li><strong>Video analysis:</strong> <code>analyze_video_upload()</code> samples frames, runs ML/LLM/Hybrid modes, and writes overlay MP4s. Call it with your own storage paths if you host uploads elsewhere.</li>
+        <li><strong>Front-end management:</strong> <code>renderUploadLibrary()</code> and <code>deleteUpload()</code> in <code>static/js/app.js</code> build the library UI. You can reuse them inside another page by providing container IDs.</li>
+      </ul>
+      <pre><code>// Delete an upload programmatically
+await performApiRequest(`/api/opencore/uploads/${id}`, { method: 'DELETE' });
+renderUploadLibrary();
+</code></pre>
+      <p>Tip: store large videos outside the repo and point the registry at that directory via <code>UPLOADS_DIR</code> to keep deployments lean.</p>
+    </section>
+  </body>
+</html>

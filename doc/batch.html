@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Batch Analysis · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      li { margin-bottom: 0.5rem; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Batch Analysis</h1>
+      <p>Upload multiple images in one go. The backend processes each file and returns a summary plus per-image details.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>How it works</h2>
+      <ol>
+        <li>Enable <strong>multiple</strong> on the file picker or drop several images into the dropzone.</li>
+        <li>Review the thumbnails in the preview tray (click to zoom if needed).</li>
+        <li>Choose your ML model and LLM profile, then click <em>Analyze</em>.</li>
+        <li>The UI posts everything to <code>/api/opencore/analyze-batch</code> and renders the summary plus a tab per image.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>API</h2>
+      <p>Endpoint: <code>POST /api/opencore/analyze-batch</code> (multipart/form-data)</p>
+      <pre><code>curl -X POST http://localhost:8000/api/opencore/analyze-batch \ 
+  -F "modelId=builtin" \ 
+  -F "prompt=Please describe trichome maturity" \ 
+  -F "files[]=@sample1.jpg" \ 
+  -F "files[]=@sample2.jpg"</code></pre>
+      <p>Example response:</p>
+      <pre><code>{
+  "status": "ok",
+  "summary": { "text": "Overall assessment of all images" },
+  "items": [
+    {
+      "image_id": "sample1.jpg",
+      "analysis": { "ml": { ... }, "llm": { ... } },
+      "debug": { "request_id": "...", "timings": { "total_ms": 1420 } }
+    },
+    {
+      "image_id": "sample2.jpg",
+      "analysis": { "ml": { ... }, "llm": { ... } }
+    }
+  ]
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>Error handling</h2>
+      <ul>
+        <li>Large files: the API will reject payloads that exceed the server size limits.</li>
+        <li>No files selected: the UI blocks the request and shows a toast.</li>
+        <li>Timeouts: check the debug panel; camera streams can be slow, especially with large models.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Endpoint:</strong> <code>@app.post("/api/opencore/analyze-batch")</code> in <code>app.py</code> loops over <code>UploadFile</code> items, calls <code>perform_ml_only</code> or hybrid flows, and returns a summary plus per-item JSON. You can import the handler into another router if you want a different URL.</li>
+        <li><strong>Front-end:</strong> <code>submitBatchAnalysis()</code> and <code>renderBatchResults()</code> in <code>static/js/app.js</code> build <code>FormData</code>, attach <code>files[]</code>, and render tabs. Each function is independent so you can invoke it from a custom button.</li>
+        <li><strong>Optional pieces:</strong> The preview gallery uses <code>renderImagePreviews()</code>; remove or replace it if you need a text-only UI. The debug panel is populated only when <code>?debug=1</code> or the toggle is on.</li>
+      </ul>
+      <pre><code>// Minimal batch call
+const form = new FormData();
+form.append('prompt', 'Scan for mold');
+form.append('modelId', currentModelId);
+files.forEach(f => form.append('files[]', f));
+const res = await performApiRequest('/api/opencore/analyze-batch', { method: 'POST', body: form });
+renderBatchResults(res);
+</code></pre>
+      <p>Tip: keep batch sizes small on low-power devices; the handler processes files sequentially so you can swap in a custom loop for parallelism if your hardware allows.</p>
+    </section>
+  </body>
+</html>

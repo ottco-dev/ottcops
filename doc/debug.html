@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Debug Mode · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        color: #0f172a;
+      }
+      header {
+        border-bottom: 2px solid #0f172a;
+        margin-bottom: 2rem;
+      }
+      pre {
+        background: #0f172a;
+        color: #f9fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Debug Mode</h1>
+      <p>Show latency, request IDs, and payload snippets for power users.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Enabling</h2>
+      <ul>
+        <li>Toggle “Show debug” in the UI, or</li>
+        <li>Add <code>?debug=1</code> to the URL.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>What you see</h2>
+      <ul>
+        <li><strong>Request ID:</strong> Trace a specific run across logs.</li>
+        <li><strong>Model version:</strong> Selected TM bundle and LLM profile.</li>
+        <li><strong>Timings:</strong> Upload, ML inference, LLM call, and total.</li>
+        <li><strong>Payload preview:</strong> Shortened request/response JSON.</li>
+        <li><strong>Errors:</strong> Any exception text surfaced inline.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Interpreting timings</h2>
+      <ul>
+        <li><strong>High model_ms:</strong> Consider a lighter TM bundle or GPU.</li>
+        <li><strong>High llm_ms:</strong> Check API token mode latency or provider load.</li>
+        <li><strong>High total_ms:</strong> Network + model + LLM combined; stream sources can add delay.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Backend hooks:</strong> <code>build_debug_payload()</code> in <code>app.py</code> assembles <code>request_id</code>, timings, and model identifiers. Call it in your own routes to reuse the same structure.</li>
+        <li><strong>Frontend panel:</strong> <code>renderDebugPanel(payload)</code> in <code>static/js/app.js</code> renders the collapsible debug block. It runs only when <code>debugEnabled()</code> is true (toggle or <code>?debug=1</code>), keeping the feature optional.</li>
+        <li><strong>Timing helpers:</strong> ML and LLM wrappers measure <code>model_ms</code> and <code>llm_ms</code>; use the same pattern (<code>performance.now()</code>) for any new async call you add.</li>
+      </ul>
+      <pre><code>// Example: attach debug info to a custom call
+const started = performance.now();
+const res = await performApiRequest('/api/custom');
+const debug = {
+  request_id: res.debug?.request_id || crypto.randomUUID(),
+  timings: { total_ms: performance.now() - started }
+};
+renderDebugPanel({ debug, response: res });
+</code></pre>
+      <p>Tip: keep the panel small—truncate large payloads before rendering to avoid UI lag.</p>
+    </section>
+  </body>
+</html>

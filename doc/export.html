@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Export · OPENCORE Analyzer</title>
+    <style>
+      body { font-family: "Space Grotesk", system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 2.5rem; line-height: 1.6; }
+      header { border-bottom: 2px solid #0f172a; margin-bottom: 2rem; }
+      pre { background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      .doc-nav a { margin-right: 1rem; color: #0d5c63; text-decoration: none; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Export Options</h1>
+      <p>Download JSON, create PDF reports, and share analyses via link.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>JSON download</h2>
+      <ul>
+        <li>Click “Download JSON” near the result.</li>
+        <li>The UI stringifies the current output and saves it with a timestamped filename.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>PDF report</h2>
+      <ul>
+        <li>Hit “Create PDF”. The browser generates a PDF with date, model name, summary, and per-image highlights.</li>
+        <li>Ideal for quick sharing or attaching to tickets.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Share link</h2>
+      <p>Endpoint: <code>POST /api/opencore/share</code></p>
+      <ul>
+        <li>Sends the current analysis to the backend.</li>
+        <li>Returns a <code>share_id</code> and URL.</li>
+        <li>Open the link or send it to teammates; the static viewer renders the stored payload.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>JSON download:</strong> <code>downloadJson()</code> in <code>static/js/app.js</code> stringifies the current result and triggers a blob download. Pass any object to reuse it in your own UI.</li>
+        <li><strong>PDF export:</strong> <code>exportPdf()</code> uses <code>window.jsPDF</code> when available and falls back gracefully if the library is absent—keep it optional by loading the script only on pages that need PDF.</li>
+        <li><strong>Share links:</strong> Backend route <code>/api/opencore/share</code> persists payloads via <code>save_share_payload()</code> in <code>app.py</code>; the viewer at <code>/share/{id}</code> reads the same store. You can override the storage path via <code>SHARE_STORE_DIR</code>.</li>
+      </ul>
+      <pre><code>// Trigger a JSON-only export from another page
+const payload = { summary: res.summary, items: res.items };
+downloadJson(payload, 'custom-export.json');
+</code></pre>
+      <p>Tip: keep exports modular—only render the buttons you need (JSON, PDF, share) to avoid pulling extra scripts into minimal deployments.</p>
+    </section>
+  </body>
+</html>

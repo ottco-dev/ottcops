@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ML Models · OPENCORE Analyzer</title>
+    <style>
+      body { font-family: "Space Grotesk", system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 2.5rem; line-height: 1.6; }
+      header { border-bottom: 2px solid #0f172a; margin-bottom: 2rem; }
+      pre { background: #0f172a; color: #f9fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      .doc-nav a { margin-right: 1rem; color: #0d5c63; text-decoration: none; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>ML Models</h1>
+      <p>Teachable Machine (easy) and pro workflows (Label Studio, YOLO, GPU training).</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Teachable Machine (easy mode)</h2>
+      <ol>
+        <li>Train an image classifier in Teachable Machine.</li>
+        <li>Export as TensorFlow (TFJS) or Keras; ZIP with <code>metadata.json</code>/<code>model.json</code>/<code>weights.bin</code> or <code>keras_model.h5</code> + <code>labels.txt</code>.</li>
+        <li>Upload via the config page; the server converts TFJS if needed and registers labels.</li>
+        <li>Select the model in the analyzer or set it as default.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>Pro mode: Label Studio + YOLO</h2>
+      <ol>
+        <li>Label images in Label Studio (bounding boxes or segments).</li>
+        <li>Export COCO and train a detector (YOLOv8/YOLOv10) on GPU.</li>
+        <li>Convert the trained model to a TensorFlow SavedModel or <code>.h5/.keras</code>.</li>
+        <li>Package the export with a <code>labels.txt</code> describing class order, then upload.</li>
+      </ol>
+      <p>Keep class names concise; they appear in JSON outputs and summaries.</p>
+    </section>
+
+    <section>
+      <h2>Model registry</h2>
+      <ul>
+        <li>Uploads land in <code>TM-models/</code> with metadata stored in <code>registry.json</code>.</li>
+        <li>The active default is stored in <code>app-settings.json</code> and can be changed via the config console.</li>
+        <li>ML-only mode warms up the selected bundle during startup to reduce first-run latency.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Model registry:</strong> <code>opencore/settings_store.py</code> exposes <code>load_tm_registry()</code> and <code>save_tm_registry()</code>. They keep models modular—call them in custom routers to add/remove entries without touching the UI.</li>
+        <li><strong>Artifact detection:</strong> <code>ensure_model_artifact()</code> and <code>_discover_model_artifact()</code> in <code>app.py</code> detect SavedModel folders, TFJS bundles, and <code>.keras/.h5/.hdf5</code> exports. Use them before inference to normalize inputs.</li>
+        <li><strong>ML-only entry point:</strong> <code>perform_ml_only()</code> wraps preprocessing and classification so you can reuse it in new endpoints (e.g., a CLI or a cron worker) without the LLM layer.</li>
+      </ul>
+      <pre><code># Example: load a model path manually
+from app import ensure_model_artifact, load_tf_model
+artifact = ensure_model_artifact(Path('TM-models/my-model'))
+model = load_tf_model(artifact)
+</code></pre>
+      <p>Tip: keep labels with the bundle (<code>labels.txt</code>); the loader reads them automatically and passes them downstream to the UI and JSON outputs.</p>
+    </section>
+  </body>
+</html>

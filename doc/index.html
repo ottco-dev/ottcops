@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>OPENCORE Analyzer · Documentation</title>
+    <style>
+      :root {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        color: #071019;
+        background: #f7f8fb;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+        background: #f7f8fb;
+      }
+      header {
+        border-bottom: 3px solid #111527;
+        margin-bottom: 2rem;
+      }
+      .doc-nav a {
+        margin-right: 1rem;
+        color: #0d5c63;
+        text-decoration: none;
+        font-weight: 600;
+      }
+      section {
+        margin-bottom: 2.5rem;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #111527;
+      }
+      ul {
+        padding-left: 1.3rem;
+      }
+      code {
+        background: #111527;
+        color: #f7f8fb;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+        font-size: 0.95rem;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>OPENCORE Analyzer · Documentation</h1>
+      <p>
+        This portal bundles every feature description for the analyzer from <strong>ottcouture.eu</strong>. Each page is plain HTML with examples so teams can quickly adapt the workflows.
+      </p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Overview</h2>
+      <p>
+        The Analyzer pairs Teachable Machine models with LLM outputs and returns clean JSON. The front end and backend stay classic: FastAPI + HTML/JS/CSS without extra frameworks. Every feature can run independently and is documented here.
+      </p>
+    </section>
+
+    <section>
+      <h2>Highlights</h2>
+      <ul>
+        <li><strong>Prompt Templates &amp; Builder:</strong> Auto-prompts, FAQ drag-and-drop tiles, and per-browser custom presets.</li>
+        <li><strong>Batch &amp; ML-only:</strong> Multi-image uploads and pure TM inference without LLMs.</li>
+        <li><strong>Debug Panel:</strong> Request IDs, model versions, and timing breakdowns.</li>
+        <li><strong>API Token Mode:</strong> Custom base URL + token for enterprise targets.</li>
+        <li><strong>API Endpoints Explorer:</strong> Custom-styled OpenAPI playground to test every route without Swagger.</li>
+        <li><strong>UI Enhancements:</strong> Stream dashboard, theme switch, JSON fullscreen, drag &amp; drop.</li>
+        <li><strong>Export:</strong> JSON download, PDF report, and share links with a viewer.</li>
+        <li><strong>Video &amp; Streams:</strong> Scheduler for snapshot/RTSP cameras with batch automation.</li>
+        <li><strong>ML Models:</strong> Tutorials for Teachable Machine (easy) and Label Studio + YOLO (pro).</li>
+        <li><strong>Custom Modules:</strong> How to attach your own backend modules and front-end hooks.</li>
+        <li><strong>Raspberry Pi Guides:</strong> Mounting in grow tents, camera setup, edge scripting.</li>
+        <li><strong>Home Automation:</strong> Examples for Home Assistant, Node-RED, and Python scripts.</li>
+        <li><strong>LLM Switchboard:</strong> `/api/settings/llm` persists provider/base URL/model/system prompt for Analyzer &amp; OTTO.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; modular tips</h2>
+      <ul>
+        <li><strong>Routing:</strong> The FastAPI app is instantiated in <code>app.py</code> after importing shared helpers from <code>opencore/</code>. Each feature mounts its own endpoint module (e.g., batch, uploads, MQTT) so you can disable or extend them independently.</li>
+        <li><strong>Front-end controller:</strong> <code>static/js/app.js</code> holds feature-specific functions such as <code>submitAnalysis()</code>, <code>submitBatchAnalysis()</code>, and <code>refreshMqttSensors()</code>. Each function is isolated so you can lift it into your own pages or call it conditionally.</li>
+        <li><strong>Configuration store:</strong> <code>opencore/settings_store.py</code> persists LLM profiles, MQTT brokers, and other optional blocks; every setter has a matching getter for selective use in custom endpoints.</li>
+      </ul>
+      <p>When adapting the stack, start by importing only the functions you need (for example, <code>from opencore.settings_store import load_llm_profiles</code>) and wire them into new routers or UI buttons. The existing docs detail each module so you can plug pieces in without carrying the whole app.</p>
+    </section>
+
+    <section>
+      <h2>Contact</h2>
+      <p>
+        All rights belong to <strong>ottcouture.eu</strong>. Feedback and community models are welcome via <strong>otcdmin@outlook.com</strong>, Instagram <strong>@ottcouture.eu</strong>, or Discord <strong>discord.gg/GMMSqePfPh</strong>. Cannabis Social Clubs (CSCs) and companies must contact us directly to license commercial use; the free OPENCORE stack is intended only for private individuals and developer testing.
+      </p>
+    </section>
+  </body>
+</html>

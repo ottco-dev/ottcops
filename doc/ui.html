@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>UI Features · OPENCORE Analyzer</title>
+    <style>
+      body {
+        font-family: "Space Grotesk", system-ui, sans-serif;
+        margin: 0 auto;
+        max-width: 960px;
+        padding: 2.5rem;
+        line-height: 1.6;
+      }
+      header { border-bottom: 2px solid #0f172a; margin-bottom: 2rem; }
+      pre { background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      .doc-nav a { margin-right: 1rem; color: #0d5c63; text-decoration: none; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>UI Features</h1>
+      <p>Drag &amp; drop, previews, themes, and fullscreen JSON.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Drag &amp; Drop</h2>
+      <ul>
+        <li>Drop files onto the dropzone to populate the file input.</li>
+        <li>Hovering highlights the dropzone; leaving removes the highlight.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Image preview &amp; zoom</h2>
+      <ul>
+        <li>Thumbnails appear for each selected file.</li>
+        <li>Click a thumbnail to open the preview modal; zoom via the slider.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Theme switch</h2>
+      <ul>
+        <li>Use the theme toggle to flip between light/dark.</li>
+        <li>The choice is stored in <code>localStorage</code> and restored on load.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>JSON fullscreen</h2>
+      <ul>
+        <li>Click “Fullscreen” near the JSON output to open an overlay.</li>
+        <li>Close via the top-right button to return to the normal layout.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Drag &amp; drop:</strong> <code>wireDropzone()</code> and <code>renderImagePreviews()</code> in <code>static/js/app.js</code> are standalone; call them with your own input/preview selectors to reuse the behavior.</li>
+        <li><strong>Theme switch:</strong> <code>toggleTheme()</code> flips <code>theme-dark/theme-light</code> classes on <code>body</code> and saves to <code>localStorage</code>. Drop the toggle if you want a fixed style.</li>
+        <li><strong>JSON fullscreen:</strong> <code>openJsonFullscreen()</code> renders an overlay for any JSON string. You can point it at another textarea or API response for quick inspections.</li>
+      </ul>
+      <pre><code>// Reuse dropzone on another page
+wireDropzone({
+  dropzoneId: 'myDrop',
+  fileInputId: 'myFileInput',
+  onFiles: files => renderImagePreviews(files, document.getElementById('myPreview'))
+});
+</code></pre>
+      <p>Tip: every widget is optional—include only the HTML blocks you need and the JS will gracefully ignore missing elements.</p>
+    </section>
+  </body>
+</html>

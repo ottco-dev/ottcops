@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Raspberry Pi Guide · OPENCORE Analyzer</title>
+    <style>
+      body { font-family: "Space Grotesk", system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 2.5rem; line-height: 1.6; }
+      header { border-bottom: 2px solid #0f172a; margin-bottom: 2rem; }
+      pre { background: #0f172a; color: #f9fafc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+      .doc-nav a { margin-right: 1rem; color: #0d5c63; text-decoration: none; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Raspberry Pi Deployment</h1>
+      <p>Mount the analyzer in a grow tent and wire cameras on a small edge device.</p>
+            <nav class="doc-nav">
+        <a href="/doc/index.html">Index</a>
+        <a href="/doc/prompts.html">Prompts</a>
+        <a href="/doc/batch.html">Batch</a>
+        <a href="/doc/debug.html">Debug</a>
+        <a href="/doc/api_token_mode.html">API Tokens</a>
+        <a href="/doc/api_endpoints.html">API Endpoints</a>
+        <a href="/doc/ui.html">UI</a>
+        <a href="/doc/export.html">Export</a>
+        <a href="/doc/streams.html">Streams</a>
+        <a href="/doc/uploads.html">Media</a>
+        <a href="/doc/models.html">Models</a>
+        <a href="/doc/mqtt.html">MQTT</a>
+        <a href="/doc/modules.html">Add-ons</a>
+        <a href="/doc/raspberry.html">Raspberry Pi</a>
+        <a href="/doc/home_automation.html">Home Automation</a>
+        <a href="/doc/python_api.html">Python API</a>
+      </nav>
+    </header>
+
+    <section>
+      <h2>Hardware tips</h2>
+      <ul>
+        <li>Use a Pi 4/5 with active cooling; ML models load faster with more RAM.</li>
+        <li>Prefer wired Ethernet for stable uploads.</li>
+        <li>Mount the Pi outside humid zones; run camera cables inside.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Installation</h2>
+      <pre><code>sudo apt update && sudo apt install python3-venv python3-pip git
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+OTTC_SKIP_UPDATE_CHECK=1 uvicorn app:app --host 0.0.0.0 --port 8000</code></pre>
+    </section>
+
+    <section>
+      <h2>Cameras</h2>
+      <ul>
+        <li>USB webcams: use <code>fswebcam</code> or <code>v4l2-ctl</code> for quick snapshots.</li>
+        <li>IP/RTSP cams: add the snapshot or RTSP URL to the Streams tab.</li>
+        <li>Schedule snapshots every 5 seconds and batch analysis every ~30 seconds to avoid overload.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Code reference &amp; adaptation tips</h2>
+      <ul>
+        <li><strong>Systemd/cron:</strong> Use the sample <code>python_api</code> snippets with <code>crontab</code> or <code>systemd</code> timers to snapshot a Pi camera and POST to <code>/api/opencore/analyze</code>.</li>
+        <li><strong>Streams:</strong> <code>/api/opencore/streams</code> accepts RTSP/USB/HTTP sources. The <code>StreamManager</code> class in <code>app.py</code> handles scheduling; you can reduce interval/retention when running on constrained Pi hardware.</li>
+        <li><strong>Overlay previews:</strong> Fetch <code>/api/opencore/streams/{id}/overlay.jpg</code> to render annotations in a lightweight dashboard without running the full UI.</li>
+      </ul>
+      <pre><code># Pi-friendly curl sample
+curl -X POST -F "file=@capture.jpg" -F "prompt=Quick health check"   http://localhost:8000/api/opencore/analyze
+</code></pre>
+      <p>Tip: disable heavy features (PDF export, share links) on the Pi by hiding their buttons in HTML; the core analyzer endpoints work fine without them.</p>
+    </section>
+  </body>
+</html>
